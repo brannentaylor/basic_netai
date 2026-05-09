@@ -14,3 +14,6 @@ __pycache__/
 *.log
 *.egg-info/
 /inventory.yaml
+# Avoid committing ad-hoc key filenames people drop in the repo root:
+/github
+/github.pub
