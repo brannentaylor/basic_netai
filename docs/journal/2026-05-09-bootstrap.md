@@ -14,7 +14,9 @@ Initial tree landed with `network_lab` package, `infra/ansible` playbooks, rsysl
 
 ## Repo changes
 
-Fill in after your first local commit, e.g. `git rev-parse HEAD`.
+- `af03393` — initial scaffold (Python, Ansible, syslog, docs).
+- `c5916fd` — optional `logging source-interface` (Gi1 transit vs management footgun).
+- `e7077cb` — journal entry links the SHAs above.
 
 ## Problems + resolution
 
