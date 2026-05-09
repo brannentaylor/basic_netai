@@ -12,7 +12,11 @@ show run | include logging
 ```bash
 sudo ss -ulnp | grep 514 || true
 sudo tail -n 50 /var/log/network-lab/all.log
+# Network-heavy view (patterns from inventory hostname / mgmt IPs):
+sudo grep -Ei 'csr0|10\.0\.0\.(20|22|23)' /var/log/network-lab/all.log | tail -n 50
 ```
+
+See **`docs/monitoring/syslog.md`** if **`all.log` contains Ubuntu OS noise**: reinstall the **`ruleset`-bound **`imudp`** fragment and restart **`rsyslog`**.
 
 ## Common causes
 

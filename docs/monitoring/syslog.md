@@ -23,11 +23,21 @@
 
 ## On-disk output
 
-- `/var/log/network-lab/all.log` — aggregate file (default fragment).
+- `/var/log/network-lab/all.log` — **UDP/514-only** aggregate file (**see ruleset-bound `imudp`** in **[`infra/syslog/rsyslog.d/basic_netai-remote.conf`](../../infra/syslog/rsyslog.d/basic_netai-remote.conf)**). Local Ubuntu systemd / auth / kernel noise stays in **`/var/log/syslog`** unless you deliberately forward something to **`127.0.0.1:514`**.
 
-On Ubuntu/Debian the directory must be **writable by the `syslog` user**, or rsyslog logs **`action … omfile suspended`**. Install scripts/playbooks use `syslog:adm` and mode `0775` on `/var/log/network-lab`.
+**Older installs:** if **`all.log` still mixes OS lines**, reinstall the fragment ( **`sudo bash infra/syslog/install_receiver.sh`** or Ansible **`syslog_server.yml`** ) plus **`sudo systemctl restart rsyslog`**, then **`tail`** only **new** lines (historic mixed lines remain until rotated/cleared).
 
-Use `logrotate` if retention matters; not automated in v0.1.0.
+**Filter live view** (today’s IPs from **`infra/ansible/inventory/hosts.yml`** CSR management):
+
+```bash
+grep -Ei 'csr0|10\.0\.0\.(20|22|23)' /var/log/network-lab/all.log | tail -n 50
+```
+
+These management IPv4 hints match **`csr_lab`** defaults in **`infra/ansible/inventory/hosts.yml`**; widen the pattern once your numbering diverges (**hostnames** CSR emits depend on IOS hostname / **`logging`** source-interface).
+
+On Ubuntu/Debian the directory must be **writable by the `syslog` user**, or rsyslog logs **`action … omfile suspended`**. Install scripts/playbooks use **`syslog:adm`** and mode **`0775`** on **`/var/log/network-lab`**.
+
+Use **`logrotate`** if retention matters; not automated in v0.1.0.
 
 ## Agent usage
 
