@@ -6,8 +6,8 @@ ansible_password: "{{ lookup('env', 'CSR_SSH_PASSWORD') | default('', true) }}"
 ansible_become: false
 ansible_become_method: enable
 
-# syslog target = Ubuntu control host management address (edit to match your VM).
-lab_syslog_collector_ipv4: 10.0.0.50
+# Syslog receiver = this Ubuntu host on the lab /24 (verify: `ip -br -4 addr`).
+lab_syslog_collector_ipv4: 10.0.0.21
 
 # Optional: `logging source-interface <iface>` — leave empty to let IOS choose.
 # If Gi1 is ONLY your transit (192.168.254.x after routing playbook), do NOT set it to Gi1

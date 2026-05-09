@@ -5,7 +5,7 @@ devices:
     platform: cisco_iosxe
     environment: lab
   - hostname: csr02
-    management_ipv4: 10.0.0.21
+    management_ipv4: 10.0.0.23
     platform: cisco_iosxe
     environment: lab
   - hostname: csr03
