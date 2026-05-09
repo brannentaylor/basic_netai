@@ -17,5 +17,5 @@ show interfaces GigabitEthernet1
 
 ## Recovery pointers
 
-- Re-run `infra/ansible/playbooks/site_routing.yml` after fixing variables.
+- From `infra/ansible/`, re-run `uv run ansible-playbook playbooks/site_routing.yml` after fixing variables.
 - Compare running config to `infra/ansible/templates/iosxe_gi1_ospf.j2`.

@@ -23,6 +23,6 @@ sudo tail -n 50 /var/log/network-lab/all.log
 
 ## Fix path
 
-1. `ansible-playbook infra/ansible/playbooks/syslog_server.yml`
-2. `ansible-playbook infra/ansible/playbooks/csr_logging.yml`
+1. From `infra/ansible/`: `uv run ansible-playbook playbooks/syslog_server.yml`
+2. `uv run ansible-playbook playbooks/csr_logging.yml`
 3. Re-test with `debug` or `clear log` + induced event (lab only).

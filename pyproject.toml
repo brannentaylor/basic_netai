@@ -25,6 +25,7 @@ where = ["src"]
 dev = [
     "pytest>=8.3",
     "ruff>=0.8",
+    "ansible-core>=2.17",
 ]
 
 [tool.ruff]

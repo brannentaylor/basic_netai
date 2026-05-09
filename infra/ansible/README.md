@@ -2,12 +2,31 @@
 
 Applies **Gi1 + OSPF** and **syslog forwarding** from the Ubuntu control node.
 
-## Install collections
+## Install Ansible + collections
+
+Ansible is **not** a system package on a fresh Ubuntu install. This repo installs **`ansible-core`** via **uv** (same toolchain as Python).
+
+From the **repository root**:
 
 ```bash
-cd infra/ansible
-ansible-galaxy collection install -r requirements.yml
+cd ~/basic_netai
+uv sync --all-groups
 ```
+
+Install required collections (**no sudo** — they go under `~/.ansible/collections`):
+
+```bash
+cd ~/basic_netai/infra/ansible
+uv run ansible-galaxy collection install -r requirements.yml
+```
+
+All playbook commands below use `uv run` from `infra/ansible` so `ansible.cfg` and `-r requirements.yml` paths stay correct:
+
+```bash
+cd ~/basic_netai/infra/ansible
+```
+
+**Alternative:** `sudo apt install ansible-core` if you prefer a system-wide `/usr/bin/ansible-playbook`; do **not** use `sudo` for `ansible-galaxy collection install`.
 
 ## Configure environment
 
@@ -27,14 +46,14 @@ Edit:
 1. **rsyslog on the VM** (localhost, requires sudo):
 
    ```bash
-   ansible-playbook playbooks/syslog_server.yml --ask-become-pass
+   uv run ansible-playbook playbooks/syslog_server.yml --ask-become-pass
    ```
 
 2. **Routing**, then **logging** (or reverse if you already have L3 toward the VM):
 
    ```bash
-   ansible-playbook playbooks/site_routing.yml
-   ansible-playbook playbooks/csr_logging.yml
+   uv run ansible-playbook playbooks/site_routing.yml
+   uv run ansible-playbook playbooks/csr_logging.yml
    ```
 
 Use `--check` / diff mode when experimenting.
