@@ -6,13 +6,13 @@
   gather_facts: false
   become: true
   tasks:
-    - name: Ensure aggregate log directory exists
+    - name: Ensure aggregate log directory exists (writable by syslog user)
       ansible.builtin.file:
         path: /var/log/network-lab
         state: directory
-        owner: root
+        owner: syslog
         group: adm
-        mode: "0755"
+        mode: "0775"
 
     - name: Install basic_netai rsyslog drop-in
       ansible.builtin.copy:

@@ -17,13 +17,15 @@
 
 1. From repo root: `uv sync --all-groups`, then `cd infra/ansible` and `uv run ansible-galaxy collection install -r requirements.yml` (see `infra/ansible/README.md`).
 2. Edit `lab_syslog_collector_ipv4` in `infra/ansible/group_vars/csr_lab.yml` to the **Ubuntu VM’s** address on `10.0.0.0/24`.
-3. `uv run ansible-playbook playbooks/syslog_server.yml --ask-become-pass` (from `infra/ansible/`).
+3. Prefer **`sudo bash infra/syslog/install_receiver.sh`** from repo root when **sudo-rs** breaks Ansible `--ask-become-pass` (see `infra/ansible/README.md`).
 4. Open firewall: `sudo ufw allow from 10.0.0.0/24 to any port 514 proto udp`
 5. `uv run ansible-playbook playbooks/csr_logging.yml` (from `infra/ansible/`).
 
 ## On-disk output
 
 - `/var/log/network-lab/all.log` — aggregate file (default fragment).
+
+On Ubuntu/Debian the directory must be **writable by the `syslog` user**, or rsyslog logs **`action … omfile suspended`**. Install scripts/playbooks use `syslog:adm` and mode `0775` on `/var/log/network-lab`.
 
 Use `logrotate` if retention matters; not automated in v0.1.0.
 
