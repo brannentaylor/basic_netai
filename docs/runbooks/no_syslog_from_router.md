@@ -18,7 +18,7 @@ sudo tail -n 50 /var/log/network-lab/all.log
 
 - Wrong **`lab_syslog_collector_ipv4`** in `group_vars/csr_lab.yml`.
 - **UFW** / host firewall blocking UDP/514 from `10.0.0.0/24`.
-- **`logging source-interface`** not usable (interface down / wrong VRF).
+- **`logging source-interface`** pointing at an interface that cannot reach `10.0.0.0/24` (leave blank in `group_vars` to let IOS decide).
 - rsyslog not restarted after editing `/etc/rsyslog.d/`.
 
 ## Fix path

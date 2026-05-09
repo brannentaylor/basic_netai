@@ -19,7 +19,7 @@ export CSR_SSH_PASSWORD='your-password'
 Edit:
 
 - `inventory/hosts.yml` — management IPs.
-- `group_vars/csr_lab.yml` — **`lab_syslog_collector_ipv4`** must be the VM’s address on `10.0.0.0/24`, plus **`csr_logging_source_interface`** if Gi1 is not your management path.
+- `group_vars/csr_lab.yml` — **`lab_syslog_collector_ipv4`** must be the VM’s address on `10.0.0.0/24`. Set **`csr_logging_source_interface`** only when you know which interface reliably reaches that subnet (often *not* Gi1 after Gi1 becomes pure OSPF transit).
 - `host_vars/` — per-router **router-id** and **Gi1 IPv4** within `192.168.254.0/29`.
 
 ## Run order (suggested)

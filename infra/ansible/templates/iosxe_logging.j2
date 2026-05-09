@@ -2,4 +2,6 @@
 service timestamps log datetime msec
 logging host {{ lab_syslog_collector_ipv4 }} transport udp port 514
 logging trap informational
+{% if csr_logging_source_interface %}
 logging source-interface {{ csr_logging_source_interface }}
+{% endif %}

@@ -9,9 +9,10 @@ ansible_become_method: enable
 # syslog target = Ubuntu control host management address (edit to match your VM).
 lab_syslog_collector_ipv4: 10.0.0.50
 
-# IOS-XE interface toward management / syslog next-hop in this lab.
-# CSR interface naming varies by image — validate with `show ip interface brief`.
-csr_logging_source_interface: GigabitEthernet1
+# Optional: `logging source-interface <iface>` — leave empty to let IOS choose.
+# If Gi1 is ONLY your transit (192.168.254.x after routing playbook), do NOT set it to Gi1
+# unless that interface also reaches 10.0.0.0/24; use the real management-facing interface instead.
+csr_logging_source_interface: ""
 
 # Gi1 transit (multi-access /29) — must not overlap management 10.0.0.0/24 lab.
 csr_gi1_interface: GigabitEthernet1
