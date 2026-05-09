@@ -17,6 +17,7 @@ Public build log, ADRs, replication steps, and agent-safety notes live under [`d
 
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — how to change the repo safely, run checks, escalate.
 - [`infra/ansible/`](infra/ansible/) — intended router state (routing, logging).
+- [`docs/instruction_manual_ansible_lab.md`](docs/instruction_manual_ansible_lab.md) — how Ansible fits this repo (for CLI-first engineers).
 - [`docs/ip-plan.md`](docs/ip-plan.md) — numbering source of truth once filled in.
 - [`docs/monitoring/syslog.md`](docs/monitoring/syslog.md) — syslog receiver on this VM.
 

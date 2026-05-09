@@ -2,6 +2,7 @@
 
 | Doc | Purpose |
 | --- | --- |
+| [instruction_manual_ansible_lab.md](instruction_manual_ansible_lab.md) | Ansible-centric tour for CLI-first network engineers |
 | [topology.md](topology.md) | Logical + physical sketch of the lab VM and CSRs |
 | [HOW_TO_REPLICATE.md](HOW_TO_REPLICATE.md) | Cold-start checklist for cloning the repo |
 | [ip-plan.md](ip-plan.md) | Authoritative IPv4 plan (fill as you build) |
