@@ -77,18 +77,18 @@
 
     - name: Write captured IOS output to artifact file on controller
       ansible.builtin.copy:
-        dest: "{{ baseline_host_dir }}/{{ artifact_row.item.fn }}"
+        dest: "{{ baseline_host_dir }}/{{ (artifact_row.snapshot_line | default({})).fn | default('unknown.txt') }}"
         mode: "0640"
         content: |-
-          COMMAND: {{ artifact_row.item.cmd }}
+          COMMAND: {{ (artifact_row.snapshot_line | default({})).cmd | default('') }}
           FAILED: {{ artifact_row.failed | default(false) | lower }}
           MSG: {{ artifact_row.msg | default('') }}
 
-          {{ artifact_row.stdout | default('', true) }}
+          {{ artifact_row.stdout_lines | default([]) | flatten | join('\n') }}
       loop: "{{ snapshot_gather.results | default([]) }}"
       loop_control:
         loop_var: artifact_row
-        label: "{{ artifact_row.item.fn }}"
+        label: "{{ (artifact_row.snapshot_line | default({})).fn | default('artifact') }}"
       delegate_to: localhost
 
 - name: Baseline snapshot — manifest + diff hints on controller
