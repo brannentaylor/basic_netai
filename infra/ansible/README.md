@@ -68,6 +68,8 @@ Ubuntu may ship **sudo-rs**. A few sharp edges:
 
    You will be prompted for **your Linux account password** (`brannen`), not CSR `cisco`. After it finishes, confirm **UDP/514** listening: `ss -ulnp | grep ':514'` and check `/var/log/network-lab/` exists.
 
+   Whenever **`infra/syslog/rsyslog.d/basic_netai-remote.conf`** changes (**`git pull`**), rerun that installer (or Ansible **`syslog_server.yml`**) plus **`sudo systemctl restart rsyslog`** so **`/var/log/network-lab/all.log`** stays tied to **`imudp/514`** only — see **`docs/monitoring/syslog.md`**.
+
    **Alternative** (NOPASSWD sudo only):
 
    ```bash

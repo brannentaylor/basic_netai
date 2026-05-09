@@ -185,6 +185,7 @@ Think of **`telemetry.json`** like **automated programmatic **`screen logs`** ke
 | **Dry run discrepancies** | **`--check`** support varies across network modules | Pilot on a disposable lab CSR; treat snapshots as **`--check`-less**. |
 | **Ubuntu syslog playbook blocked** | **`sudo-rs`** / missing **`NOPASSWD`** | Prefer **[`infra/syslog/install_receiver.sh`](file:///home/brannen/basic_netai/infra/syslog/install_receiver.sh)** (**see Ansible README**). |
 | **Snapshots missing JSON** | Older playbook checkout | **`git pull`**, rerun **`snapshot_configs.yml`** from **`infra/ansible`**. |
+| **`all.log` mixes Ubuntu **`systemd`** + CSR syslog** | Stale **`rsyslog`** fragment (global **`*.*`** **`omfile`**) before **UDP **`ruleset`**** retrofit | **`sudo bash infra/syslog/install_receiver.sh`**, **`sudo systemctl restart rsyslog`** — **`docs/monitoring/syslog.md`**. |
 
 ---
 
@@ -211,4 +212,4 @@ Questions about **changing behaviour** (**new routing knobs**) should cite **inv
 
 ---
 
-_Last revision: hybrid **`telemetry.json`** + **`manifest.json`** baseline bundles._
+_Last revision: hybrid **`telemetry.json`/`manifest.json`** baselines plus syslog **UDP-only ruleset** in **`infra/syslog/rsyslog.d/basic_netai-remote.conf`**, isolating **`/var/log/network-lab/all.log`** from duplicated local OS chatter._

@@ -13,6 +13,7 @@
 | [agent-ops/safety.md](agent-ops/safety.md) | Guardrails for autonomous tools |
 | [agent-ops/evaluation.md](agent-ops/evaluation.md) | Lightweight eval ideas |
 | [journal/README.md](journal/README.md) | Public build log format |
+| [journal/2026-05-09-ansible-syslog-session.md](journal/2026-05-09-ansible-syslog-session.md) | Example session wrap (baselines JSON, instruction manual, syslog ruleset) |
 | [decisions/README.md](decisions/README.md) | ADR index |
 
 Prompts either live in journal entries or [prompts/README.md](prompts/README.md).
