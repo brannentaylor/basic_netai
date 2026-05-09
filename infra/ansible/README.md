@@ -82,6 +82,21 @@ Ubuntu may ship **sudo-rs**. A few sharp edges:
    uv run ansible-playbook playbooks/csr_logging.yml
    ```
 
+3. **Loopback0 + controlled OSPF redistribution** (human-gated — read the design first):
+
+   Peer review: **`docs/design/2026-05-09-loopback-ospf-redistribution.md`**
+
+   ```bash
+   # Dry-run — no device changes; inspect output and diffs
+   uv run ansible-playbook playbooks/loopback_redistribute.yml --check --diff
+
+   # After sign-off — applies config and saves when changed
+   uv run ansible-playbook playbooks/loopback_redistribute.yml --diff
+
+   # Read-only verification (show outputs)
+   uv run ansible-playbook playbooks/verify_loopback_ospf.yml
+   ```
+
 Use `--check` / diff mode when experimenting.
 
 ## Firewall reminder

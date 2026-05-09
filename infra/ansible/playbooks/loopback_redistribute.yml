@@ -1,0 +1,42 @@
+---
+# Loopback0 (router-id-aligned /32), prefix-list + route-map scoped redistribution
+# into OSPF 1 as connected → external Type 1 (OE1). Peer review: docs/design/2026-05-09-loopback-ospf-redistribution.md
+- name: Cisco CSR — Loopback0 + selective OSPF redistribution
+  hosts: csr_lab
+  gather_facts: false
+
+  tasks:
+    - name: Assert router-id / loopback IPv4 is defined
+      ansible.builtin.assert:
+        that:
+          - csr_ospf_router_id | string | length > 0
+        fail_msg: "Set csr_ospf_router_id in inventory/host_vars/<host>.yml"
+
+    - name: Permit only this host loopback /32 in PL-BASICNETAI-LOOPBACK
+      cisco.ios.ios_config:
+        lines:
+          - "ip prefix-list PL-BASICNETAI-LOOPBACK seq 10 permit {{ csr_ospf_router_id }}/32"
+
+    - name: Route-map RM-BASICNETAI-LOOPBACK-RD — match prefix-list
+      cisco.ios.ios_config:
+        parents:
+          - route-map RM-BASICNETAI-LOOPBACK-RD permit 10
+        lines:
+          - match ip address prefix-list PL-BASICNETAI-LOOPBACK
+
+    - name: Configure Loopback0 (IP = router-id quad, /32 mask)
+      cisco.ios.ios_config:
+        parents:
+          - interface Loopback0
+        lines:
+          - description basic_netai LOOPBACK_ROUTER-ID
+          - "ip address {{ csr_ospf_router_id }} 255.255.255.255"
+          - no shutdown
+
+    - name: Redistribute only route-map-matched connected subnets as OSPF E1
+      cisco.ios.ios_config:
+        parents:
+          - router ospf 1
+        lines:
+          - redistribute connected subnets route-map RM-BASICNETAI-LOOPBACK-RD metric-type 1
+        save_when: changed

@@ -1,0 +1,21 @@
+---
+# Read-only: Loopback0, prefix-list / route-map, OSPF externals. Run after loopback_redistribute.yml.
+- name: Cisco CSR — verify loopback + OSPF redistribution
+  hosts: csr_lab
+  gather_facts: false
+
+  tasks:
+    - name: Snapshot loopback and OSPF redistribution state
+      cisco.ios.ios_command:
+        commands:
+          - show ip interface brief | include Loopback
+          - show running-config interface Loopback0
+          - show ip prefix-list PL-BASICNETAI-LOOPBACK
+          - show route-map RM-BASICNETAI-LOOPBACK-RD
+          - show ip protocols | section ospf
+          - show ip route ospf
+      register: verify_out
+
+    - name: Print verification (per host)
+      ansible.builtin.debug:
+        var: verify_out.stdout_lines
