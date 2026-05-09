@@ -16,7 +16,8 @@ Initial tree landed with `network_lab` package, `infra/ansible` playbooks, rsysl
 
 - `af03393` — initial scaffold (Python, Ansible, syslog, docs).
 - `c5916fd` — optional `logging source-interface` (Gi1 transit vs management footgun).
-- `e7077cb` — journal entry links the SHAs above.
+
+Run `git log --oneline` for newer doc-only commits.
 
 ## Problems + resolution
 
