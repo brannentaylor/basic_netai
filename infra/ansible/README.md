@@ -56,13 +56,15 @@ Ubuntu may ship **sudo-rs**. A few sharp edges:
 
 ## Run order (suggested)
 
-1. **rsyslog on the VM** (localhost, requires root once — see **Ubuntu + sudo-rs** above):
+1. **rsyslog on the VM** (localhost, requires root once — see **Ubuntu + sudo-rs** above). **Default on sudo-rs hosts:** use interactive `sudo` once (Option A), not the playbook.
 
    From **repository root**:
 
    ```bash
    sudo bash infra/syslog/install_receiver.sh
    ```
+
+   You will be prompted for **your Linux account password** (`brannen`), not CSR `cisco`. After it finishes, confirm **UDP/514** listening: `ss -ulnp | grep ':514'` and check `/var/log/network-lab/` exists.
 
    **Alternative** (NOPASSWD sudo only):
 
