@@ -22,7 +22,9 @@ Public build log, ADRs, replication steps, and agent-safety notes live under [`d
 
 ## Quick start (Python)
 
-Install [uv](https://github.com/astral-sh/uv), then:
+Install [uv](https://github.com/astral-sh/uv) (binary at `~/.local/bin/uv`; if **`uv: command not found`**, run `source ~/.local/bin/env` or open a new login shell).
+
+Then:
 
 ```bash
 git clone git@github.com:brannentaylor/basic_netai.git
