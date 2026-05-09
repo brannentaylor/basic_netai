@@ -1,0 +1,14 @@
+# Example only — copy to inventory.yaml (gitignored) with your real management IPs.
+devices:
+  - hostname: csr01
+    management_ipv4: 10.0.0.20
+    platform: cisco_iosxe
+    environment: lab
+  - hostname: csr02
+    management_ipv4: 10.0.0.21
+    platform: cisco_iosxe
+    environment: lab
+  - hostname: csr03
+    management_ipv4: 10.0.0.22
+    platform: cisco_iosxe
+    environment: lab

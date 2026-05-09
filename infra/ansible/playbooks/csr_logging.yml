@@ -1,0 +1,10 @@
+---
+# Point CSRs at the Ubuntu rsyslog receiver (group_vars: lab_syslog_collector_ipv4).
+- name: Cisco CSR — syslog forwarding
+  hosts: csr_lab
+  gather_facts: false
+  tasks:
+    - name: Render logging stanza
+      cisco.ios.ios_config:
+        src: "{{ playbook_dir }}/../templates/iosxe_logging.j2"
+        save_when: changed

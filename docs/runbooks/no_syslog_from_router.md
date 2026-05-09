@@ -1,0 +1,28 @@
+# No syslog from router X
+
+## Verify on CSR
+
+```text
+show logging
+show run | include logging
+```
+
+## Verify on Ubuntu VM
+
+```bash
+sudo ss -ulnp | grep 514 || true
+sudo tail -n 50 /var/log/network-lab/all.log
+```
+
+## Common causes
+
+- Wrong **`lab_syslog_collector_ipv4`** in `group_vars/csr_lab.yml`.
+- **UFW** / host firewall blocking UDP/514 from `10.0.0.0/24`.
+- **`logging source-interface`** not usable (interface down / wrong VRF).
+- rsyslog not restarted after editing `/etc/rsyslog.d/`.
+
+## Fix path
+
+1. `ansible-playbook infra/ansible/playbooks/syslog_server.yml`
+2. `ansible-playbook infra/ansible/playbooks/csr_logging.yml`
+3. Re-test with `debug` or `clear log` + induced event (lab only).

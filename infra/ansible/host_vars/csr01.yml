@@ -1,0 +1,2 @@
+csr_ospf_router_id: 1.1.1.1
+csr_gi1_ipv4: 192.168.254.1

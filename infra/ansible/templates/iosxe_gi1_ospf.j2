@@ -1,0 +1,11 @@
+{# Gi1 multi-access transit + single-area OSPFv2 (area 0). #}
+interface {{ csr_gi1_interface }}
+ description basic_netai Gi1 transit
+ no shutdown
+ ip address {{ csr_gi1_ipv4 }} {{ csr_gi1_netmask }}
+!
+router ospf 1
+ router-id {{ csr_ospf_router_id }}
+ passive-interface default
+ no passive-interface {{ csr_gi1_interface }}
+ network 192.168.254.0 0.0.0.7 area 0

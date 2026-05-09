@@ -1,0 +1,31 @@
+---
+# Run on the Ubuntu control host (localhost) with become — installs rsyslog fragment.
+- name: Ubuntu — rsyslog receiver for CSRs
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Ensure aggregate log directory exists
+      ansible.builtin.file:
+        path: /var/log/network-lab
+        state: directory
+        owner: root
+        group: adm
+        mode: "0755"
+
+    - name: Install basic_netai rsyslog drop-in
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../syslog/rsyslog.d/basic_netai-remote.conf"
+        dest: /etc/rsyslog.d/99-basic-netai.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart rsyslog
+
+  handlers:
+    - name: Restart rsyslog
+      ansible.builtin.service:
+        name: rsyslog
+        state: restarted
+        enabled: true

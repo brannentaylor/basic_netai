@@ -1,0 +1,18 @@
+---
+# Connection (env-driven password matches python `.env.example`).
+ansible_connection: ansible.netcommon.network_cli
+ansible_user: "{{ lookup('env', 'CSR_SSH_USERNAME') | default('cisco', true) }}"
+ansible_password: "{{ lookup('env', 'CSR_SSH_PASSWORD') | default('', true) }}"
+ansible_become: false
+ansible_become_method: enable
+
+# syslog target = Ubuntu control host management address (edit to match your VM).
+lab_syslog_collector_ipv4: 10.0.0.50
+
+# IOS-XE interface toward management / syslog next-hop in this lab.
+# CSR interface naming varies by image — validate with `show ip interface brief`.
+csr_logging_source_interface: GigabitEthernet1
+
+# Gi1 transit (multi-access /29) — must not overlap management 10.0.0.0/24 lab.
+csr_gi1_interface: GigabitEthernet1
+csr_gi1_netmask: 255.255.255.248

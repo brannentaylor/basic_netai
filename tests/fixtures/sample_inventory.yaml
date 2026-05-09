@@ -1,0 +1,12 @@
+devices:
+  - hostname: csr-test-01
+    management_ipv4: 10.0.0.30
+    platform: cisco_iosxe
+    environment: lab
+  - hostname: csr-test-02
+    management_ipv4: 10.0.0.31
+    platform: cisco_iosxe
+    environment: lab
+  - hostname: csr-test-03
+    management_ipv4: 10.0.0.32
+    platform: cisco_iosxe

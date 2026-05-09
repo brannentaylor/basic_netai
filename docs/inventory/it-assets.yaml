@@ -1,0 +1,26 @@
+# CMDB-light — edit as you audit hardware/software.
+devices:
+  - asset_id: lab-csr-01
+    hostname: csr01
+    role: csr1000v
+    management_ipv4: 10.0.0.20
+    ios_xe_version: fill-me
+    gi1_notes: Transit toward 192.168.254.0/29
+    owner: brannen
+    last_audit: pending
+  - asset_id: lab-csr-02
+    hostname: csr02
+    role: csr1000v
+    management_ipv4: 10.0.0.21
+    ios_xe_version: fill-me
+    gi1_notes: Transit toward 192.168.254.0/29
+    owner: brannen
+    last_audit: pending
+  - asset_id: lab-csr-03
+    hostname: csr03
+    role: csr1000v
+    management_ipv4: 10.0.0.22
+    ios_xe_version: fill-me
+    gi1_notes: Transit toward 192.168.254.0/29
+    owner: brannen
+    last_audit: pending
