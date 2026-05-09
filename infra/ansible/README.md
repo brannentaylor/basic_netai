@@ -111,7 +111,13 @@ Use `--check` / diff mode when experimenting.
 
 ## Baseline snapshots (read-only, for outage diff / rollback forensics)
 
-`playbooks/snapshot_configs.yml` captures **startup + running configuration**, IPv4 (**and IPv6 if present**) **routing summaries**, detailed **OSPF neighbour + database-summary** telemetry, optionally **CDP** (often fails on routers with CDP disabled), and lays each **`show`** into numbered **`.txt`** files under **`artifacts/baselines/<UTC_timestamp>/`** on **this workstation**.
+`playbooks/snapshot_configs.yml` captures **startup + running configuration**, IPv4 (**and IPv6 if present**) **routing summaries**, detailed **OSPF neighbour + database-summary** telemetry, optionally **CDP** (often fails on routers with CDP disabled), and emits a **hybrid** artefact bundle under **`artifacts/baselines/<UTC_timestamp>/`** on **this workstation**:
+
+- **numbered `*.txt` per CSR** — human **`diff`** workflow (tiny headers + verbatim IOS text)
+- **`telemetry.json` per CSR** — the same IOS captures structured for **`jq`**, scripts, agents (**`capture_format_version`**, **`captures[].{artifact,command,ok,msg,stdout,stdout_lines}`**)
+- **`manifest.json`** at the snapshot root — expected **`*.txt`** filenames (`vars/baseline_snapshot_commands.yml`) plus host roster
+
+Details and **`jq` examples**: [`artifacts/baselines/README.md`](artifacts/baselines/README.md).
 
 **Secrets warning:** **`30_running-config.txt`** can include credentials or keys — **`artifacts/baselines/*`** is **`gitignored`** except **`baselines/README.md`**.
 

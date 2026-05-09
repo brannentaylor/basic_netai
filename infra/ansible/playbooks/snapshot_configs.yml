@@ -1,5 +1,6 @@
 ---
-# Read-only baseline: running + startup configs, routing tables, OSPF state.
+# Read-only baseline: startup + running configs, routing, OSPF state.
+# Hybrid artifacts: numbered .txt (human diff) + telemetry.json per host + manifest.json (machine index).
 # Saves under infra/ansible/artifacts/baselines/<UTC-timestamp>/ on the controller (gitignored snapshot data).
 - name: Baseline snapshot — timestamp and output root on controller
   hosts: localhost
@@ -16,29 +17,13 @@
   hosts: csr_lab
   gather_facts: false
   strategy: linear
+  vars_files:
+    - vars/baseline_snapshot_commands.yml
 
   vars:
     baseline_root: "{{ hostvars['localhost'].network_baseline_root }}"
     network_baseline_id: "{{ hostvars['localhost'].network_baseline_id }}"
     baseline_host_dir: "{{ baseline_root }}/{{ network_baseline_id }}/{{ inventory_hostname }}"
-    # Optional/show commands should not abort the playbook; failures are echoed into the artifact file body.
-    snapshot_commands:
-      - { fn: "10_clock.txt", cmd: "show clock" }
-      - { fn: "20_show_version.txt", cmd: "show version" }
-      - { fn: "30_running-config.txt", cmd: "show running-config" }
-      - { fn: "40_startup-config.txt", cmd: "show startup-config" }
-      - { fn: "50_show_ip_interface_brief.txt", cmd: "show ip interface brief" }
-      - { fn: "60_show_interfaces_description.txt", cmd: "show interfaces description" }
-      - { fn: "70_show_ip_route.txt", cmd: "show ip route" }
-      - { fn: "71_show_ip_route_ospf.txt", cmd: "show ip route ospf" }
-      - { fn: "72_show_ipv6_route.txt", cmd: "show ipv6 route" }
-      - { fn: "80_show_ip_protocols_section_ospf.txt", cmd: "show ip protocols | section ospf" }
-      - { fn: "81_show_ip_ospf_interface_brief.txt", cmd: "show ip ospf interface brief" }
-      - { fn: "82_show_ip_ospf_neighbor_detail.txt", cmd: "show ip ospf neighbor detail" }
-      - { fn: "83_show_ip_ospf_database_database-summary.txt", cmd: "show ip ospf database database-summary" }
-      - { fn: "84_show_ip_ospf_border-routers.txt", cmd: "show ip ospf border-routers" }
-      # CDP often disabled on routers; capture error text if unsupported.
-      - { fn: "90_show_cdp_neighbors_detail.txt", cmd: "show cdp neighbors detail" }
 
   tasks:
     - name: Ensure per-host snapshot directory exists on controller
@@ -91,10 +76,44 @@
         label: "{{ (artifact_row.snapshot_line | default({})).fn | default('artifact') }}"
       delegate_to: localhost
 
+    - name: Build structured capture rows for telemetry.json
+      ansible.builtin.set_fact:
+        telemetry_captures: "{{ telemetry_captures | default([]) + [_capture_row] }}"
+      vars:
+        _sl: "{{ artifact_row.snapshot_line | default({}, true) }}"
+        _lines: "{{ artifact_row.stdout_lines | default([]) | flatten }}"
+        _capture_row:
+          artifact: "{{ _sl.fn | default('') }}"
+          command: "{{ _sl.cmd | default('') }}"
+          ok: "{{ not (artifact_row.failed | default(false)) }}"
+          msg: "{{ artifact_row.msg | default('', true) }}"
+          stdout: "{{ _lines | join('\n') }}"
+          stdout_lines: "{{ _lines }}"
+      loop: "{{ snapshot_gather.results | default([]) }}"
+      loop_control:
+        loop_var: artifact_row
+
+    - name: Write machine-readable telemetry (telemetry.json) on controller
+      ansible.builtin.copy:
+        dest: "{{ baseline_host_dir }}/telemetry.json"
+        mode: "0640"
+        content: "{{ telemetry_document | to_nice_json(sort_keys=true) }}"
+      vars:
+        telemetry_document:
+          capture_format_version: 1
+          snapshot_id_utc: "{{ network_baseline_id }}"
+          inventory_hostname: "{{ inventory_hostname }}"
+          ansible_host: "{{ ansible_host | default('', true) }}"
+          playbook: snapshot_configs.yml
+          captures: "{{ telemetry_captures }}"
+      delegate_to: localhost
+
 - name: Baseline snapshot — manifest + diff hints on controller
   hosts: localhost
   gather_facts: false
   connection: local
+  vars_files:
+    - vars/baseline_snapshot_commands.yml
 
   tasks:
     - name: Write MANIFEST describing snapshot layout for future diffs
@@ -105,6 +124,13 @@
           basic_netai — network baseline snapshot
           snapshot_id_utc={{ hostvars.localhost.network_baseline_id }}
           root={{ hostvars.localhost.network_baseline_root }}/{{ hostvars.localhost.network_baseline_id }}
+
+          Machine-readable catalogue: manifest.json (expected filenames + host list).
+
+          Hybrid layout per host subdirectory:
+          - numbered *.txt — verbatim IOS output with small human headers (diff-friendly)
+          - telemetry.json — same captures as structured JSON (AI / jq / tooling)
+          - 00_inventory_meta.txt — Ansible inventory fingerpost
 
           Per-device directories captured:
           {% for h in groups['csr_lab'] | sort %}
@@ -124,3 +150,22 @@
               artifacts/baselines/<LATER>/csr01/82_show_ip_ospf_neighbor_detail.txt
 
           Heuristic: 30_* (configuration) plus 70_*–84_* (routes + OSPF) expose most regressions affecting neighbors.
+
+          For scripting / agents, jq against telemetry.json instead of scraping headers in *.txt files.
+
+    - name: Machine-readable manifest manifest.json
+      ansible.builtin.copy:
+        mode: "0644"
+        dest: "{{ hostvars.localhost.network_baseline_root }}/{{ hostvars.localhost.network_baseline_id }}/manifest.json"
+        content: "{{ baseline_manifest | to_nice_json(sort_keys=true) }}"
+      vars:
+        baseline_manifest:
+          snapshot_format_version: 1
+          snapshot_id_utc: "{{ hostvars.localhost.network_baseline_id }}"
+          artifact_root_absolute: "{{ hostvars.localhost.network_baseline_root }}/{{ hostvars.localhost.network_baseline_id }}"
+          hosts_expected: "{{ groups['csr_lab'] | sort | list }}"
+          expected_text_filenames: "{{ snapshot_commands | map(attribute='fn') | list }}"
+          per_host_additional_files:
+            - "00_inventory_meta.txt"
+            - "telemetry.json"
+          companion_human_manifest: MANIFEST.txt
