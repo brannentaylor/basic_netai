@@ -64,25 +64,31 @@
         commands:
           - terminal length 0
 
-    - name: "Capture IOS command: {{ item.cmd }}"
+    - name: Capture IOS telemetry (one show command per loop iteration)
       cisco.ios.ios_command:
         commands:
-          - "{{ item.cmd }}"
+          - "{{ snapshot_line.cmd }}"
       loop: "{{ snapshot_commands }}"
+      loop_control:
+        loop_var: snapshot_line
+        label: "{{ snapshot_line.cmd }}"
       register: snapshot_gather
       ignore_errors: true
 
-    - name: "Persist IOS output {{ item.item.fn }}"
+    - name: Write captured IOS output to artifact file on controller
       ansible.builtin.copy:
-        dest: "{{ baseline_host_dir }}/{{ item.item.fn }}"
+        dest: "{{ baseline_host_dir }}/{{ artifact_row.item.fn }}"
         mode: "0640"
         content: |-
-          COMMAND: {{ item.item.cmd }}
-          FAILED: {{ item.failed | default(false) | lower }}
-          MSG: {{ item.msg | default('') }}
+          COMMAND: {{ artifact_row.item.cmd }}
+          FAILED: {{ artifact_row.failed | default(false) | lower }}
+          MSG: {{ artifact_row.msg | default('') }}
 
-          {{ item.stdout | default('', true) }}
-      loop: "{{ snapshot_gather.results }}"
+          {{ artifact_row.stdout | default('', true) }}
+      loop: "{{ snapshot_gather.results | default([]) }}"
+      loop_control:
+        loop_var: artifact_row
+        label: "{{ artifact_row.item.fn }}"
       delegate_to: localhost
 
 - name: Baseline snapshot — manifest + diff hints on controller
