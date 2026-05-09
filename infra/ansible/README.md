@@ -38,8 +38,10 @@ export CSR_SSH_PASSWORD='your-password'
 Edit:
 
 - `inventory/hosts.yml` — management IPs.
-- `group_vars/csr_lab.yml` — **`lab_syslog_collector_ipv4`** must be the VM’s address on `10.0.0.0/24`. Set **`csr_logging_source_interface`** only when you know which interface reliably reaches that subnet (often *not* Gi1 after Gi1 becomes pure OSPF transit).
-- `host_vars/` — per-router **router-id** and **Gi1 IPv4** within `192.168.254.0/29`.
+- `inventory/group_vars/csr_lab.yml` — connection + **`lab_syslog_collector_ipv4`** (VM on `10.0.0.0/24`). Set **`csr_logging_source_interface`** only when you know which interface reliably reaches that subnet.
+- `inventory/host_vars/` — per-router **router-id** and **Gi1 IPv4** within `192.168.254.0/29`.
+
+Vars live **under `inventory/`** alongside `hosts.yml` so Ansible merges them (`ansible_connection: ansible.netcommon.network_cli` applies to **`cisco.ios`** modules — plain `ssh` fails with “not valid for this module”).
 
 ## Ubuntu + sudo-rs (short troubleshooting)
 

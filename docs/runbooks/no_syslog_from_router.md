@@ -16,9 +16,9 @@ sudo tail -n 50 /var/log/network-lab/all.log
 
 ## Common causes
 
-- Wrong **`lab_syslog_collector_ipv4`** in `group_vars/csr_lab.yml`.
+- Wrong **`lab_syslog_collector_ipv4`** in `infra/ansible/inventory/group_vars/csr_lab.yml`.
 - **UFW** / host firewall blocking UDP/514 from `10.0.0.0/24`.
-- **`logging source-interface`** pointing at an interface that cannot reach `10.0.0.0/24` (leave blank in `group_vars` to let IOS decide).
+- **`logging source-interface`** pointing at an interface that cannot reach `10.0.0.0/24` (leave blank in `inventory/group_vars` to let IOS decide).
 - rsyslog not restarted after editing `/etc/rsyslog.d/`.
 
 ## Fix path
