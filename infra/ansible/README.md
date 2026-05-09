@@ -109,6 +109,24 @@ Ubuntu may ship **sudo-rs**. A few sharp edges:
 
 Use `--check` / diff mode when experimenting.
 
+## Baseline snapshots (read-only, for outage diff / rollback forensics)
+
+`playbooks/snapshot_configs.yml` captures **startup + running configuration**, IPv4 (**and IPv6 if present**) **routing summaries**, detailed **OSPF neighbour + database-summary** telemetry, optionally **CDP** (often fails on routers with CDP disabled), and lays each **`show`** into numbered **`.txt`** files under **`artifacts/baselines/<UTC_timestamp>/`** on **this workstation**.
+
+**Secrets warning:** **`30_running-config.txt`** can include credentials or keys — **`artifacts/baselines/*`** is **`gitignored`** except **`baselines/README.md`**.
+
+Because data must be read live from routers, Ansible **`--check` does _not_ collect meaningful output** — run this playbook normally (no **`--check`**) when you genuinely want baseline files written.
+
+Do **not** use **`ansible-playbook --limit …`** unless you widen the selector to whatever your Ansible inventory names the controller (`localhost`): the playbook needs the opening **`hosts: localhost`** play to mint the shared **`network_baseline_id`**.
+
+From **`infra/ansible/`**:
+
+```bash
+uv run ansible-playbook playbooks/snapshot_configs.yml
+```
+
+After stable changes (for example routing policy or loopback rollout), rerun and store snapshots alongside your archive policy (offline tarball, Vault, CMDB attachments).
+
 ## Firewall reminder
 
 Allow **UDP/514** from `10.0.0.0/24` to this host only, for example:

@@ -17,3 +17,7 @@ __pycache__/
 # Avoid committing ad-hoc key filenames people drop in the repo root:
 /github
 /github.pub
+
+# Offline device baselines contain full IOS configs — keep out of Git.
+infra/ansible/artifacts/baselines/*
+!infra/ansible/artifacts/baselines/README.md

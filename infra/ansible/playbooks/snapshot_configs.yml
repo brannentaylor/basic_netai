@@ -1,0 +1,120 @@
+---
+# Read-only baseline: running + startup configs, routing tables, OSPF state.
+# Saves under infra/ansible/artifacts/baselines/<UTC-timestamp>/ on the controller (gitignored snapshot data).
+- name: Baseline snapshot — timestamp and output root on controller
+  hosts: localhost
+  gather_facts: false
+  connection: local
+
+  tasks:
+    - name: Establish snapshot id and artifact root directory
+      ansible.builtin.set_fact:
+        network_baseline_id: "{{ lookup('pipe', 'date -u +%Y%m%dT%H%M%SZ') }}"
+        network_baseline_root: "{{ playbook_dir }}/../artifacts/baselines"
+
+- name: Cisco CSR lab — capture configuration and routing baseline
+  hosts: csr_lab
+  gather_facts: false
+  strategy: linear
+
+  vars:
+    baseline_root: "{{ hostvars['localhost'].network_baseline_root }}"
+    network_baseline_id: "{{ hostvars['localhost'].network_baseline_id }}"
+    baseline_host_dir: "{{ baseline_root }}/{{ network_baseline_id }}/{{ inventory_hostname }}"
+    # Optional/show commands should not abort the playbook; failures are echoed into the artifact file body.
+    snapshot_commands:
+      - { fn: "10_clock.txt", cmd: "show clock" }
+      - { fn: "20_show_version.txt", cmd: "show version" }
+      - { fn: "30_running-config.txt", cmd: "show running-config" }
+      - { fn: "40_startup-config.txt", cmd: "show startup-config" }
+      - { fn: "50_show_ip_interface_brief.txt", cmd: "show ip interface brief" }
+      - { fn: "60_show_interfaces_description.txt", cmd: "show interfaces description" }
+      - { fn: "70_show_ip_route.txt", cmd: "show ip route" }
+      - { fn: "71_show_ip_route_ospf.txt", cmd: "show ip route ospf" }
+      - { fn: "72_show_ipv6_route.txt", cmd: "show ipv6 route" }
+      - { fn: "80_show_ip_protocols_section_ospf.txt", cmd: "show ip protocols | section ospf" }
+      - { fn: "81_show_ip_ospf_interface_brief.txt", cmd: "show ip ospf interface brief" }
+      - { fn: "82_show_ip_ospf_neighbor_detail.txt", cmd: "show ip ospf neighbor detail" }
+      - { fn: "83_show_ip_ospf_database_database-summary.txt", cmd: "show ip ospf database database-summary" }
+      - { fn: "84_show_ip_ospf_border-routers.txt", cmd: "show ip ospf border-routers" }
+      # CDP often disabled on routers; capture error text if unsupported.
+      - { fn: "90_show_cdp_neighbors_detail.txt", cmd: "show cdp neighbors detail" }
+
+  tasks:
+    - name: Ensure per-host snapshot directory exists on controller
+      ansible.builtin.file:
+        path: "{{ baseline_host_dir }}"
+        state: directory
+        mode: "0750"
+      delegate_to: localhost
+
+    - name: Write inventory metadata beside captured files
+      ansible.builtin.copy:
+        dest: "{{ baseline_host_dir }}/00_inventory_meta.txt"
+        mode: "0640"
+        content: |
+          inventory_hostname: {{ inventory_hostname }}
+          ansible_host: {{ ansible_host | default('', true) }}
+          snapshot_id_utc: {{ network_baseline_id }}
+          playbook: snapshot_configs.yml
+      delegate_to: localhost
+
+    - name: Terminal session — disable pager once per device
+      cisco.ios.ios_command:
+        commands:
+          - terminal length 0
+
+    - name: "Capture IOS command: {{ item.cmd }}"
+      cisco.ios.ios_command:
+        commands:
+          - "{{ item.cmd }}"
+      loop: "{{ snapshot_commands }}"
+      register: snapshot_gather
+      ignore_errors: true
+
+    - name: "Persist IOS output {{ item.item.fn }}"
+      ansible.builtin.copy:
+        dest: "{{ baseline_host_dir }}/{{ item.item.fn }}"
+        mode: "0640"
+        content: |-
+          COMMAND: {{ item.item.cmd }}
+          FAILED: {{ item.failed | default(false) | lower }}
+          MSG: {{ item.msg | default('') }}
+
+          {{ item.stdout | default('', true) }}
+      loop: "{{ snapshot_gather.results }}"
+      delegate_to: localhost
+
+- name: Baseline snapshot — manifest + diff hints on controller
+  hosts: localhost
+  gather_facts: false
+  connection: local
+
+  tasks:
+    - name: Write MANIFEST describing snapshot layout for future diffs
+      ansible.builtin.copy:
+        mode: "0644"
+        dest: "{{ hostvars.localhost.network_baseline_root }}/{{ hostvars.localhost.network_baseline_id }}/MANIFEST.txt"
+        content: |
+          basic_netai — network baseline snapshot
+          snapshot_id_utc={{ hostvars.localhost.network_baseline_id }}
+          root={{ hostvars.localhost.network_baseline_root }}/{{ hostvars.localhost.network_baseline_id }}
+
+          Per-device directories captured:
+          {% for h in groups['csr_lab'] | sort %}
+          - {{ h }}/
+          {% endfor %}
+
+          After an outage, compare snapshots with unified diffs:
+
+            cd infra/ansible && \
+            diff -u \
+              artifacts/baselines/<BASELINE>/csr01/30_running-config.txt \
+              artifacts/baselines/<LATER>/csr01/30_running-config.txt
+
+            cd infra/ansible && \
+            diff -u \
+              artifacts/baselines/<BASELINE>/csr01/82_show_ip_ospf_neighbor_detail.txt \
+              artifacts/baselines/<LATER>/csr01/82_show_ip_ospf_neighbor_detail.txt
+
+          Heuristic: 30_* (configuration) plus 70_*–84_* (routes + OSPF) expose most regressions affecting neighbors.
