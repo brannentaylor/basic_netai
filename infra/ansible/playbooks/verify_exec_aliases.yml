@@ -1,0 +1,19 @@
+---
+# Read-only — confirm EXEC alias lines present in running-config.
+- name: Cisco CSR — verify EXEC aliases
+  hosts: csr_lab
+  gather_facts: false
+
+  tasks:
+    - name: List configured alias exec entries
+      cisco.ios.ios_command:
+        commands:
+          - show running-config | include alias exec sib
+          - show running-config | include alias exec sir
+          - show running-config | include alias exec sis
+          - show running-config | include alias exec u
+      register: verify_out
+
+    - name: Print verification (per host)
+      ansible.builtin.debug:
+        var: verify_out.stdout_lines

@@ -1,0 +1,15 @@
+---
+# EXEC aliases — lab ops shortcuts. Peer review: docs/design/2026-05-09-ios-exec-aliases.md
+- name: Cisco CSR — EXEC aliases (sib, sir, sis, u)
+  hosts: csr_lab
+  gather_facts: false
+
+  tasks:
+    - name: Install global EXEC aliases (identical on all csr_lab hosts)
+      cisco.ios.ios_config:
+        lines:
+          - alias exec sib show ip interface brief
+          - alias exec sir show ip route
+          - alias exec sis show interface status
+          - alias exec u undebug all
+        save_when: changed
