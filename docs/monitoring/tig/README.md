@@ -123,7 +123,7 @@ Prerequisites: **`Phase A0`** complete so **`ufw`** allows **SSH** and **8086** 
 Prerequisites: **`infra/tig/.env`** on **TIGger** has **`INFLUX_ORG`**, **`INFLUX_BUCKET`**, **`INFLUX_TOKEN`** (no quotes).
 
 1. From repo root: **`sudo bash infra/tig/install_telegraf_smoke.sh`**
-   - Installs **`telegraf`**. If **`/etc/telegraf/telegraf.conf`** mentions no **`telegraf.d`** directory, the script appends **Telegraf **`@include`** lines for **`*.toml`** and **`*.conf`** drop-ins so fragments load. Writes **`token_file`** (readable by user **`telegraf`**), **`/etc/telegraf/telegraf.d/smoke-local.toml`**, then **enable/start** **`telegraf.service`**. APT may briefly report **telegraf.service failed** during package post-install—the script **`stop`/`reset-failed`**, configures, **`start`** again afterward.
+   - Installs **`telegraf`** (APT may briefly show **telegraf.service failed** during post-install—that is OK). Writes **`token_file`** (`root`:**`telegraf`**, **`0640`**), **`/etc/telegraf/telegraf.d/99-smoke-local.conf`**. Debian-style units load **`*.conf`** from **`telegraf.d`** alongside **`telegraf.conf`**— **`*.toml` drop-ins alone are often ignored.** If an older **`basic_netai`** run appended **`@include`** lines into **`telegraf.conf`**, that duplicated **`telegraf.d`** and prevented startup—the script strips that legacy block automatically.
 2. **`systemctl status telegraf`** — should be **active**. If errors: **`journalctl -u telegraf -n 50 --no-pager`** (401 → token/org/bucket; permission → **`chgrp telegraf`** on **`influx_token`**).
 3. **Grafana → Explore**, same Influx datasource, **Flux** (wait ~60s):
 
