@@ -111,6 +111,8 @@ mkdir -p /etc/systemd/system/telegraf.service.d
 # systemd can still pass an empty argv token; Telegraf then exits 1. Clear + replace ExecStart.
 cat >"${UNIT_DROPIN}" <<UNIT
 [Service]
+# Satisfy references to \$TELEGRAF_OPTS in the stock unit fragments / defaults (no stray empty argv).
+Environment=TELEGRAF_OPTS=
 EnvironmentFile=/etc/telegraf/influx_smoke.env
 ExecStart=
 ExecStart=${TE_BIN} -config "${MAIN_CONF}" -config-directory "${CONF_DIR}"
@@ -119,7 +121,10 @@ chmod 0644 "${UNIT_DROPIN}"
 
 umask 022
 mkdir -p "${CONF_DIR}"
-cat >"${CONF_FRAGMENT}" <<EOF
+# Never leave a half-written fragment; Telegraf 1.38+ treats unknown keys (e.g. legacy token_file) as fatal.
+rm -f "${CONF_FRAGMENT}"
+CONF_FRAGMENT_NEW="${CONF_FRAGMENT}.new.$$"
+cat >"${CONF_FRAGMENT_NEW}" <<EOF
 # Repo: basic_netai — Telegraf smoke (localhost only). Delete when SNMP config lands.
 [[outputs.influxdb_v2]]
   urls = ["http://127.0.0.1:8086"]
@@ -134,7 +139,25 @@ cat >"${CONF_FRAGMENT}" <<EOF
 
 [[inputs.mem]]
 EOF
-chmod 0644 "${CONF_FRAGMENT}"
+chmod 0644 "${CONF_FRAGMENT_NEW}"
+mv -f "${CONF_FRAGMENT_NEW}" "${CONF_FRAGMENT}"
+
+if grep -qE '^[[:space:]]*token_file[[:space:]]*=' "${CONF_FRAGMENT}"; then
+  echo "${CONF_FRAGMENT} must not use token_file (removed in Telegraf 1.38+)." >&2
+  exit 1
+fi
+if ! grep -Fq 'token = "${INFLUX_TOKEN}"' "${CONF_FRAGMENT}"; then
+  echo "${CONF_FRAGMENT} is missing token = \"\${INFLUX_TOKEN}\" line." >&2
+  exit 1
+fi
+
+shopt -s nullglob
+for f in "${CONF_DIR}"/*.conf; do
+  [[ "${f}" == "${CONF_FRAGMENT}" ]] && continue
+  grep -qE '^[[:space:]]*token_file[[:space:]]*=' "${f}" 2>/dev/null || continue
+  echo "WARNING: ${f} still contains token_file — Telegraf 1.38+ will fail unless you remove or update it." >&2
+done
+shopt -u nullglob
 
 systemctl daemon-reload
 
