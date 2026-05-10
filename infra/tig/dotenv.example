@@ -11,5 +11,6 @@ INFLUX_URL=http://127.0.0.1:8086
 # INFLUX_BUCKET=csr_metrics
 # INFLUX_TOKEN=paste-admin-token-from-influx-setup
 
-# Phase A2+ — Telegraf / SNMP (illustrative; configure in telegraf.conf)
-# CSR management addresses come from Ansible inventory when wiring polls.
+# Phase A1-smoke — Telegraf localhost → Influx (install_telegraf_smoke.sh reads these)
+
+# Phase A2+ — Telegraf SNMP (later; Ansible inventory CSR mgmt IPs)
