@@ -18,21 +18,23 @@ On the routers directly (CLI is usually fine with pipes):
 
 ```text
 show running-config | include snmp-server
-show access-lists BASIC-NETAI-SNMP-TIGGER
+show access-lists LAB-SNMP-V2XTND
 ```
 
 Use **`show access-lists NAME`** for **named** extended ACLs. **`show ip access-list extended <name>`** is for **numbered** extended ACLs on many IOS-XE images and fails with **`% Invalid`** if you paste the ACL **name**.
 
 **`csr_snmp.yml`** prelude runs **`configure terminal`** → **`no snmp-server`** (**removes SNMP server config entirely on that CSR**) → **`no ip access-list extended|standard <name>`** → **`no ipv6 access-list <name>`** → **`end`** — all **best-effort** with **`ignore_errors`**. Clearing **`snmp-server`** first frees IOS from ACL bindings so **`snmp-server community … RO <acl>`** can attach to a rebuilt **extended** ACL. Then **`ios_config`** builds the ACL, then **`snmp-server community "…"`** applies when absent from running-config (**`ios_command`**).
 
-If apply still fails after **`git pull`** (prelude **`no snmp-server`**), try renaming **`csr_snmp_acl_name`** in **`inventory/group_vars/csr_lab.yml`** so IOS cannot collide with leftover objects — then rerun **`csr_snmp.yml`**.
+If apply still fails after **`git pull`** (prelude **`no snmp-server`**), change the **value** of **`csr_snmp_acl_name`** in **`inventory/group_vars/csr_lab.yml`** (pick a fresh name) and rerun **`csr_snmp.yml`** so IOS cannot collide with leftover objects.
+
+**Important:** the file must remain named **`csr_lab.yml`** — Ansible only auto-loads **`group_vars/<inventory_group_name>.yml`**. Renaming that file to match the ACL string (e.g. **`LAB-SNMP-V2XTND`**) leaves **`csr_lab` group vars unloaded** and **`csr_snmp_acl_name` / `tigger_snmp_collector_ipv4` undefined**.
 
 If IOS still rejects the line, inspect **`show archive config differences`** / **`snmp mib`** or paste redacted **`% …`** banners from Ansible (not secrets).
 
 The playbook installs:
 
-- **`ip access-list extended BASIC-NETAI-SNMP-TIGGER`** — **`permit udp host <TIGger> any eq snmp`**, **`deny ip any any`**.
-- **`snmp-server community <RO> RO BASIC-NETAI-SNMP-TIGGER`**
+- **`ip access-list extended <csr_snmp_acl_name>`** (repo default **`LAB-SNMP-V2XTND`**) — **`permit udp host <TIGger> any eq snmp`**, **`deny ip any any`**.
+- **`snmp-server community <RO> RO <csr_snmp_acl_name>`**
 
 ACL name and TIGger IP come from **`inventory/group_vars/csr_lab.yml`**. The **community string never lives in Git** — only in **`CSR_SNMP_RO_COMMUNITY`** (Ansible) and **`SNMP_RO_COMMUNITY`** (**`infra/tig/.env`** on TIGger).
 
@@ -70,12 +72,12 @@ Roughly equivalent to **[`infra/ansible/playbooks/csr_snmp.yml`](../../../infra/
 
 ```
 configure terminal
-ip access-list extended BASIC-NETAI-SNMP-TIGGER
+ip access-list extended LAB-SNMP-V2XTND
  remark SNMP RO - Tigger telemetry 10.0.0.24
  permit udp host 10.0.0.24 any eq snmp
  deny ip any any
 exit
-snmp-server community YOUR_RO BASIC-NETAI-SNMP-TIGGER
+snmp-server community YOUR_RO LAB-SNMP-V2XTND
 end
 ```
 
