@@ -53,7 +53,7 @@ Do this once before **`Phase A0`** on **TIGger** so scripts are available under 
 | --- | --- | --- |
 | **A0** | **chrony** (time sync); **ufw** — SSH allowed; **3000** / **8086** from lab CIDR or tunnel only | **`infra/tig/`** scripts + **`dotenv.example`** |
 | **A1** | InfluxDB 2 org + bucket; API token (**never committed**); Grafana install | **`install_influxdb2.sh`**, **`install_grafana.sh`**; token in **`.env`** only |
-| **A1-smoke** | **Telegraf** on **TIGger** writes **localhost** **cpu/mem/disk** → **`lab-bucket`** — proves Grafana **Explore + Flux + Influx pipeline** before SNMP | **`install_telegraf_smoke.sh`** |
+| **A1-smoke** | **Telegraf** on **TIGger** writes **localhost** **cpu/mem** → **`lab-bucket`** — proves Grafana **Explore + Flux + Influx pipeline** before SNMP | **`install_telegraf_smoke.sh`** |
 | **A2** | CSR `snmp-server` + ACL; TIGger **Telegraf** `inputs.snmp` → Influx | Inventory CSRs in **[`infra/ansible/inventory/hosts.yml`](../../../infra/ansible/inventory/hosts.yml)** |
 | **A3** | Grafana datasource + starter dashboards | — |
 | **A4 (optional)** | **inputs.ping**, syslog bridge | — |
@@ -123,7 +123,7 @@ Prerequisites: **`Phase A0`** complete so **`ufw`** allows **SSH** and **8086** 
 Prerequisites: **`infra/tig/.env`** on **TIGger** has **`INFLUX_ORG`**, **`INFLUX_BUCKET`**, **`INFLUX_TOKEN`** (no quotes).
 
 1. From repo root: **`sudo bash infra/tig/install_telegraf_smoke.sh`**
-   - Installs **`telegraf`**, installs **`token_file`** readable by **`telegraf`**, drops **`/etc/telegraf/telegraf.d/smoke-local.conf`**, starts **`telegraf.service`**.
+   - Installs **`telegraf`**. If **`/etc/telegraf/telegraf.conf`** mentions no **`telegraf.d`** directory, the script appends **Telegraf **`@include`** lines for **`*.toml`** and **`*.conf`** drop-ins so fragments load. Writes **`token_file`** (readable by user **`telegraf`**), **`/etc/telegraf/telegraf.d/smoke-local.toml`**, then **enable/start** **`telegraf.service`**. APT may briefly report **telegraf.service failed** during package post-install—the script **`stop`/`reset-failed`**, configures, **`start`** again afterward.
 2. **`systemctl status telegraf`** — should be **active**. If errors: **`journalctl -u telegraf -n 50 --no-pager`** (401 → token/org/bucket; permission → **`chgrp telegraf`** on **`influx_token`**).
 3. **Grafana → Explore**, same Influx datasource, **Flux** (wait ~60s):
 
