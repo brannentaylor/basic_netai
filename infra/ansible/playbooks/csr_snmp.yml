@@ -20,8 +20,20 @@
           Set CSR_SNMP_RO_COMMUNITY before running this playbook (lab-only RO string shared with Telegraf SNMP_RO_COMMUNITY on Tigger).
           Example: export CSR_SNMP_RO_COMMUNITY='your-lab-ro'
 
-    # Community string may appear with `ansible-playbook -v` / `--diff` — avoid piping logs to chat.
-    - name: Apply SNMP stanza + extended ACL (idempotent merge)
+    # ACL submode first, then global `snmp-server` (do not splice with `!` — that can exit config so
+    # `snmp-server` never lands in running-config). Prefer parents/lines over a monolithic `src` blob.
+    - name: Telemetry extended ACL (SNMP source = Tigger only)
       cisco.ios.ios_config:
-        src: "{{ playbook_dir }}/../templates/iosxe_snmp_lab.j2"
+        lines:
+          - remark SNMP RO - Tigger telemetry {{ tigger_snmp_collector_ipv4 }}
+          - permit udp host {{ tigger_snmp_collector_ipv4 }} any eq snmp
+          - deny ip any any
+        parents:
+          - ip access-list extended {{ csr_snmp_acl_name }}
+        save_when: changed
+
+    - name: SNMPv2c read-only community bound to telemetry ACL
+      cisco.ios.ios_config:
+        lines:
+          - snmp-server community {{ csr_snmp_ro_community }} RO {{ csr_snmp_acl_name }}
         save_when: changed

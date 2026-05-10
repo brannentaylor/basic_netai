@@ -145,7 +145,7 @@ Prerequisites: **`infra/tig/.env`** on **TIGger** has **`INFLUX_ORG`**, **`INFLU
 
 ### 1 — Routers (from control node with Ansible)
 
-Uses **[`infra/ansible/playbooks/csr_snmp.yml`](../../../infra/ansible/playbooks/csr_snmp.yml)** and **[`infra/ansible/templates/iosxe_snmp_lab.j2`](../../../infra/ansible/templates/iosxe_snmp_lab.j2)**. Vars: **`tigger_snmp_collector_ipv4`**, **`csr_snmp_acl_name`** in **`inventory/group_vars/csr_lab.yml`**.
+Uses **[`infra/ansible/playbooks/csr_snmp.yml`](../../../infra/ansible/playbooks/csr_snmp.yml)** (**`ios_config` `lines`/`parents`**, not a monolithic **`src`** file). **[`iosxe_snmp_lab.j2`](../../../infra/ansible/templates/iosxe_snmp_lab.j2)** is a **hand-paste mirror** only. Vars **`tigger_snmp_collector_ipv4`**, **`csr_snmp_acl_name`**: **`inventory/group_vars/csr_lab.yml`**.
 
 Dry-run optional:
 

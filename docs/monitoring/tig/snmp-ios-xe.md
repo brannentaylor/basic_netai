@@ -12,7 +12,7 @@ uv run ansible-playbook playbooks/csr_snmp.yml --diff
 uv run ansible-playbook playbooks/verify_csr_snmp.yml
 ```
 
-Use **`verify_csr_snmp.yml`** pulls **`show running-config | include snmp-server`** plus the telemetry ACL (**community strings appear there — do not paste into public chats**).
+**`verify_csr_snmp.yml`** runs **`show running-config | include snmp-server`** plus the telemetry ACL (**community strings appear there — do not paste into public chats**).
 
 On the routers directly:
 
@@ -32,7 +32,7 @@ The playbook merges:
 
 ACL name and TIGger IP come from **`inventory/group_vars/csr_lab.yml`**. The **community string never lives in Git** — only in **`CSR_SNMP_RO_COMMUNITY`** (Ansible) and **`SNMP_RO_COMMUNITY`** (**`infra/tig/.env`** on TIGger).
 
-`ios_config` is logged with **`no_log: true`** so the literal community should not spray into Ansible stdout (still assume lab-only secrets).
+**`csr_snmp.yml`** may echo the **`snmp-server community …`** line in **`--diff` / `-v`** output — treat shared logs like secrets.
 
 ## Prove reachability before Telegraf
 
@@ -62,16 +62,20 @@ from(bucket: "YOUR_BUCKET")
 
 ## Manual IOS reference (same as template)
 
-Roughly equivalent to **[`infra/ansible/templates/iosxe_snmp_lab.j2`](../../../infra/ansible/templates/iosxe_snmp_lab.j2)** (**remarks must stay ASCII-only**):
+Roughly equivalent to **[`infra/ansible/playbooks/csr_snmp.yml`](../../../infra/ansible/playbooks/csr_snmp.yml)** (preferred) and **`iosxe_snmp_lab.j2`** for hand-paste (**remarks must stay ASCII-only**):
 
 ```
+configure terminal
 ip access-list extended BASIC-NETAI-SNMP-TIGGER
  remark SNMP RO - Tigger telemetry 10.0.0.24
  permit udp host 10.0.0.24 any eq snmp
  deny ip any any
 exit
 snmp-server community YOUR_RO BASIC-NETAI-SNMP-TIGGER
+end
 ```
+
+Use **`exit`** once after the ACL so you return to **global config** before **`snmp-server`**. A bare **`!`** between stanzas can terminate **configure** on some IOS paths so **`snmp-server` never applies** (you end up with no **`snmp-server`** lines despite a “successful” push).
 
 Adjust **ACL / community** naming if you collide with existing lab config (**`show run | sec snmp`**).
 
@@ -98,6 +102,6 @@ After that, **`ansible-pylibssh`** is available to **network_cli** and the “fa
 
 Usually **non-ASCII punctuation** copied into **`remark`** (smart quotes, em dashes). Template lines pushed to IOS must be **ASCII** only — use **`-`** not **`—`** in remarks.
 
-### Ansible deprecation: `Direct processing of templates via src`
+### Ansible deprecation: template `src` on **`ios_config`**
 
-Tracked upstream in **ansible.netcommon** / **`cisco.ios.ios_config`**. Migrating when the collection exposes a supported **`ansible.builtin.template` + `network_cli`** path is deferred; playbook behavior is unchanged aside from warnings.
+The lab **`csr_snmp.yml`** play uses **`lines`/`parents`** (no **`src`** blob), so that warning should not occur for SNMP apply. Vendor guidance still evolves toward **`template`**-friendly pipelines — watch **ansible.netcommon** / **cisco.ios** release notes.
