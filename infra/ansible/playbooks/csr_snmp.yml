@@ -1,14 +1,13 @@
 ---
 # Phase A2 — SNMP read-only for Influx telemetry (TIGger polls CSRs).
-# Community string MUST come from the environment — never committed.
+#
+# Bind snmp-server RO to a numbered STANDARD ACL (host permit only).
+# CSR1000v / IOS-XE 16.x can hit "could not be allocated / incompatible type" when binding to named
+# extended ACLs across hosts; numbered standard avoids that path (Cisco-doc SNMP source ACL pattern).
+#
+# Prelude: no snmp-server, no access-list <n>, wipe legacy named extended|standard LAB/BASIC stubs.
 #
 # Export CSR_SNMP_RO_COMMUNITY (same value as SNMP_RO_COMMUNITY on Tigger).
-#
-# Lab drift: "could not be allocated / incompatible type" persists if SNMP still references the ACL name.
-# Prelude runs `no snmp-server` (drops all snmp-server config on the router), then strips standard|extended|ipv6
-# named lists for csr_snmp_acl_name. Lab-only — do not run against production SNMP you need to keep.
-#
-# failed_when uses lowercase substring checks (no bare "%" in expressions — breaks Ansible templating).
 - name: Cisco CSR - SNMP lab (ACL + RO community)
   hosts: csr_lab
   gather_facts: false
@@ -23,31 +22,31 @@
           Set CSR_SNMP_RO_COMMUNITY before running this playbook (lab-only RO string shared with Telegraf SNMP_RO_COMMUNITY on Tigger).
           Example: export CSR_SNMP_RO_COMMUNITY='your-lab-ro'
 
-    - name: Strip SNMP agent + telemetry ACL stubs (lab — removes all snmp-server config on device)
+    # Lab-only wipe: snmp + numbered std ACL + ghosts of old named extended ACL experiments.
+    - name: SNMP + ACL prelude (destructive lab reset)
       cisco.ios.ios_command:
         commands:
           - configure terminal
           - no snmp-server
+          - no access-list {{ csr_snmp_standard_acl_num }}
           - no ip access-list extended {{ csr_snmp_acl_name }}
           - no ip access-list standard {{ csr_snmp_acl_name }}
           - no ipv6 access-list {{ csr_snmp_acl_name }}
+          - no ip access-list extended BASIC-NETAI-SNMP-TIGGER
+          - no ip access-list standard BASIC-NETAI-SNMP-TIGGER
           - end
       ignore_errors: true
 
-    - name: Flush connection after snmp/acl prelude
+    - name: Flush connection after prelude
       ansible.builtin.meta: reset_connection
 
-    - name: Telemetry extended ACL (SNMP source = Tigger only)
+    - name: Standard numbered ACL — SNMP source = Tigger only
       cisco.ios.ios_config:
         lines:
-          - remark SNMP RO - Tigger telemetry {{ tigger_snmp_collector_ipv4 }}
-          - permit udp host {{ tigger_snmp_collector_ipv4 }} any eq snmp
-          - deny ip any any
-        parents:
-          - ip access-list extended {{ csr_snmp_acl_name }}
+          - access-list {{ csr_snmp_standard_acl_num }} permit host {{ tigger_snmp_collector_ipv4 }}
         save_when: changed
 
-    - name: Flush network connection before snmp stanza probe / apply
+    - name: Flush network connection before snmp probe / apply
       ansible.builtin.meta: reset_connection
 
     - name: Slurp running-config for snmp stanza probe
@@ -65,16 +64,15 @@
       ansible.builtin.set_fact:
         snmp_has_community_line: "{{ 'snmp-server community' in full_running_plain }}"
 
-    - name: Apply snmp-server community (explicit conf t) when missing
+    - name: Apply snmp-server community bound to numbered standard ACL
       when: not snmp_has_community_line | bool
       cisco.ios.ios_command:
         commands:
           - configure terminal
-          - snmp-server community "{{ csr_snmp_ro_community }}" RO {{ csr_snmp_acl_name }}
+          - snmp-server community "{{ csr_snmp_ro_community }}" RO {{ csr_snmp_standard_acl_num }}
           - end
           - write memory
       register: snmp_apply
-      # Substrings only (no stray "% …" literals — Ansible templating chokes). One expression = explicit OR.
       failed_when:
         - >-
           (

@@ -1,6 +1,6 @@
 # Design: TIG stack on host TIGger (SNMP Phase A; gNMI Phase B deferred)
 
-**Status:** Approved plan — **A0**/**A1**/**A1-smoke** + **A2** scaffolding in **`infra/tig/`**, **`infra/ansible/playbooks/csr_snmp.yml`**, **`docs/monitoring/tig/`**; **A3** dashboards not in-repo yet  
+**Status:** Approved plan — **A0**/**A1**/**A1-smoke** in **`infra/tig/`**; **A2** router playbook **`csr_snmp.yml`** uses a **numbered standard ACL** (default **87**, **`csr_snmp_standard_acl_num`**) **permit host** the TIGger collector (**`tigger_snmp_collector_ipv4`**) plus matching **`snmp-server … RO`** — **lab-validated May 2026** on **`csr_lab`** with **`snmpget` sysName** from TIGger. **Telegraf CSR SNMP:** **`install_telegraf_snmp_csr.sh`**; **A3** Grafana starter dashboards still open. Ops hub: **`docs/monitoring/tig/`**.
 **Audience:** Operators + coding agents picking up after a fresh chat  
 
 **Mirrors Cursor plan:** SNMP-first for **CSR IOS-XE 16.05.01b**; **gNMI / MDT only after IOS upgrade**.
@@ -37,7 +37,7 @@
 | **`docs/monitoring/tig/snmp-ios-xe.md`** | **`snmp-server`** patterns for CSR 16.05 |
 | **`docs/monitoring/tig/gnmi-roadmap.md`** | Phase B gate (defer gNMI until IOS upgrade) |
 | **`infra/tig/`** | Install scripts + **`dotenv.example`** (**no secrets in git**) + SNMP fragment **`render_telegraf_snmp_fragment.py`** |
-| **`infra/ansible/playbooks/csr_snmp.yml`** | Push ACL + RO community (**`CSR_SNMP_RO_COMMUNITY`**) |
+| **`infra/ansible/playbooks/csr_snmp.yml`** | Prelude + **numbered standard ACL** + **`snmp-server`** RO (**`CSR_SNMP_RO_COMMUNITY`**); **`verify_csr_snmp.yml`** |
 
 ---
 

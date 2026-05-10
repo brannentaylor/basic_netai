@@ -21,6 +21,7 @@ csr_gi1_netmask: 255.255.255.248
 # Phase A2 — SNMP (see playbooks/csr_snmp.yml, docs/monitoring/tig/snmp-ios-xe.md)
 # Telemetry host that polls csr_lab ansible_host UDP/161 — match your infra/tig/README.md .
 tigger_snmp_collector_ipv4: 10.0.0.24
-# Named extended ACL on CSRs (SNMP RO bind). Change THIS value to avoid IOS stale ACL collisions.
-# Do NOT rename this file: it must stay `csr_lab.yml` to match the inventory group `csr_lab`.
+# snmp-server RO uses this STANDARD numbered ACL (1–99 free range on lab CSRs — change if colliding).
+csr_snmp_standard_acl_num: 87
+# Purge prelude still removes these NAMED leftovers (extended IOS/XE quirks). Not used for snmp bind.
 csr_snmp_acl_name: LAB-SNMP-V2XTND

@@ -84,12 +84,15 @@ Ubuntu may ship **sudo-rs**. A few sharp edges:
    uv run ansible-playbook playbooks/csr_logging.yml
    ```
 
-SNMP read-only toward **TIGger** (**Phase A2** telemetry — **`docs/monitoring/tig/snmp-ios-xe.md`**):
+SNMP read-only toward **TIGger** (**Phase A2** — **`docs/monitoring/tig/snmp-ios-xe.md`**). The playbook binds **`snmp-server community … RO`** to a **numbered standard ACL** (default **87**, **`csr_snmp_standard_acl_num`** in **`group_vars/csr_lab.yml`**). TIGger source IP: **`tigger_snmp_collector_ipv4`**.
 
 ```bash
 export CSR_SNMP_RO_COMMUNITY='your-lab-read-only-string'
 uv run ansible-playbook playbooks/csr_snmp.yml --diff
+uv run ansible-playbook playbooks/verify_csr_snmp.yml
 ```
+
+On **TIGger**, after apply: **`sudo apt-get install -y snmp`**, then for example **`snmpget -v2c -c "$SNMP_RO_COMMUNITY" 10.0.0.22 1.3.6.1.2.1.1.5.0`** (replace with each CSR **`ansible_host`** from **`hosts.yml`**). Do not type angle-bracket placeholders into **`bash`** — **`<foo>`** is input redirection.
 
 3. **Loopback0 + controlled OSPF redistribution** (human-gated — read the design first):
 

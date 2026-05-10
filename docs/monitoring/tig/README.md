@@ -54,7 +54,7 @@ Do this once before **`Phase A0`** on **TIGger** so scripts are available under 
 | **A0** | **chrony** (time sync); **ufw** — SSH allowed; **3000** / **8086** from lab CIDR or tunnel only | **`infra/tig/`** scripts + **`dotenv.example`** |
 | **A1** | InfluxDB 2 org + bucket; API token (**never committed**); Grafana install | **`install_influxdb2.sh`**, **`install_grafana.sh`**; token in **`.env`** only |
 | **A1-smoke** | **Telegraf** on **TIGger** writes **localhost** **cpu/mem** → **`lab-bucket`** — proves Grafana **Explore + Flux + Influx pipeline** before SNMP | **`install_telegraf_smoke.sh`** |
-| **A2** | CSR `snmp-server` + ACL; TIGger **Telegraf** `inputs.snmp` → Influx | Inventory CSRs in **[`infra/ansible/inventory/hosts.yml`](../../../infra/ansible/inventory/hosts.yml)** |
+| **A2** | CSR **`snmp-server … RO 87`** (default ACL number) + **standard numbered ACL**; TIGger **`snmpget`** proof then **Telegraf** `inputs.snmp` → Influx | **`csr_snmp.yml`**, **`verify_csr_snmp.yml`**, **`snmp-ios-xe.md`**; hosts in **[`hosts.yml`](../../../infra/ansible/inventory/hosts.yml)** — **lab path verified May 2026** |
 | **A3** | Grafana datasource + starter dashboards | — |
 | **A4 (optional)** | **inputs.ping**, syslog bridge | — |
 
@@ -158,7 +158,7 @@ uv run ansible-playbook playbooks/csr_snmp.yml --diff
 uv run ansible-playbook playbooks/verify_csr_snmp.yml
 ```
 
-**`verify_csr_snmp.yml`** pulls a full **`show running-config`** (after **`terminal length 0`**) and **`show access-lists <acl-name>`** per CSR — **do not paste raw output** (**community** appears in the blob).
+**`verify_csr_snmp.yml`** shows **`show ip access-list <n>`** ( **`csr_snmp_standard_acl_num`**, default **`87`**) plus a full running-config scrape for **`snmp-server community`** — **do not paste raw output** (**community** appears).
 
 Use the **same** read-only community string locally on **TIGger** (next step).
 

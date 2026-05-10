@@ -12,44 +12,46 @@ uv run ansible-playbook playbooks/csr_snmp.yml --diff
 uv run ansible-playbook playbooks/verify_csr_snmp.yml
 ```
 
-**`verify_csr_snmp.yml`** uses **`terminal length 0` + full `show running-config`** and asserts the substring **`snmp-server community`** (plus **`show access-lists`**). Do not trust **`show run | inc snmp-server`** alone from **Ansible** on some **network_cli / scrapli** transports: it can echo **empty** even when snmp lines exist. **Communities appear in the blob — do not paste into public chats.**
+**`verify_csr_snmp.yml`** uses **`show ip access-list <n>`** (**`csr_snmp_standard_acl_num`**, default **`87`**) plus a full **`show running-config`** probe and asserts **`snmp-server community`** in the flattened text. Do not trust **`show run | inc snmp-server`** alone from **Ansible** on some transports. **Do not paste blobs** with communities into public chats.
 
-On the routers directly (CLI is usually fine with pipes):
+On the routers directly:
 
 ```text
 show running-config | include snmp-server
-show access-lists LAB-SNMP-V2XTND
+show ip access-list 87
 ```
 
-Use **`show access-lists NAME`** for **named** extended ACLs. **`show ip access-list extended <name>`** is for **numbered** extended ACLs on many IOS-XE images and fails with **`% Invalid`** if you paste the ACL **name**.
+**`csr_snmp.yml`** uses a **numbered STANDARD** ACL (**`access-list 87 permit host <TIGger>`**) and **`snmp-server community "…" RO 87`**. That path avoids CSR1000v **`could not be allocated / incompatible type`** failures seen when binding **`snmp-server … RO <named extended ACL>`** on some units. Prelude is still **destructive**: **`no snmp-server`**, **`no access-list 87`**, and best-effort removal of **named** ACL leftovers (**`csr_snmp_acl_name`**, **`BASIC-NETAI-SNMP-TIGGER`**).
 
-**`csr_snmp.yml`** prelude runs **`configure terminal`** → **`no snmp-server`** (**removes SNMP server config entirely on that CSR**) → **`no ip access-list extended|standard <name>`** → **`no ipv6 access-list <name>`** → **`end`** — all **best-effort** with **`ignore_errors`**. Clearing **`snmp-server`** first frees IOS from ACL bindings so **`snmp-server community … RO <acl>`** can attach to a rebuilt **extended** ACL. Then **`ios_config`** builds the ACL, then **`snmp-server community "…"`** applies when absent from running-config (**`ios_command`**).
+If **`87`** clashes with another lab use of **`access-list 87`**, set **`csr_snmp_standard_acl_num`** in **`group_vars/csr_lab.yml`** to a free **`1–99`** slot.
 
-If apply still fails after **`git pull`** (prelude **`no snmp-server`**), change the **value** of **`csr_snmp_acl_name`** in **`inventory/group_vars/csr_lab.yml`** (pick a fresh name) and rerun **`csr_snmp.yml`** so IOS cannot collide with leftover objects.
-
-**Important:** the file must remain named **`csr_lab.yml`** — Ansible only auto-loads **`group_vars/<inventory_group_name>.yml`**. Renaming that file to match the ACL string (e.g. **`LAB-SNMP-V2XTND`**) leaves **`csr_lab` group vars unloaded** and **`csr_snmp_acl_name` / `tigger_snmp_collector_ipv4` undefined**.
+**Important:** **`group_vars` file name must stay** **`csr_lab.yml`** — it must match inventory group **`csr_lab`**. Only change **`csr_snmp_standard_acl_num`** / **`csr_snmp_acl_name`** keys inside it, never the filename.
 
 If IOS still rejects the line, inspect **`show archive config differences`** / **`snmp mib`** or paste redacted **`% …`** banners from Ansible (not secrets).
 
 The playbook installs:
 
-- **`ip access-list extended <csr_snmp_acl_name>`** (repo default **`LAB-SNMP-V2XTND`**) — **`permit udp host <TIGger> any eq snmp`**, **`deny ip any any`**.
-- **`snmp-server community <RO> RO <csr_snmp_acl_name>`**
+- **`access-list <n> permit host <TIGger-ip>`** (standard numbered; default **`n=87`**).
+- **`snmp-server community <RO> RO <n>`**
 
-ACL name and TIGger IP come from **`inventory/group_vars/csr_lab.yml`**. The **community string never lives in Git** — only in **`CSR_SNMP_RO_COMMUNITY`** (Ansible) and **`SNMP_RO_COMMUNITY`** (**`infra/tig/.env`** on TIGger).
+**`<n>`**, **Tigger IP**, and legacy named-ACL purge labels live in **`inventory/group_vars/csr_lab.yml`**. The **community string never lives in Git** — **`CSR_SNMP_RO_COMMUNITY`** (Ansible) and **`SNMP_RO_COMMUNITY`** on TIGger (**`infra/tig/.env`**).
 
 **`csr_snmp.yml`** may echo the **`snmp-server community …`** line in **`--diff` / `-v`** output — treat shared logs like secrets.
 
 ## Prove reachability before Telegraf
 
-On **TIGger** (after CSR ACL + community):
+On **TIGger** (after CSR ACL + community). Install **`snmpget`** once: **`sudo apt-get install snmp`**.
+
+Use a **literal management IP**. In **`bash`**, a line like `snmpget ... <mgmt_ip>` treats **`<mgmt_ip>`** as **stdin from a file**, so you see **`No such file or directory`** if you paste the placeholder:
 
 ```bash
 SNMP_RO_COMMUNITY='your-lab-read-only-string'
-snmpget -v2c -c "$SNMP_RO_COMMUNITY" <CSR_MGMT_IP> 1.3.6.1.2.1.1.5.0
+snmpget -v2c -c "$SNMP_RO_COMMUNITY" 10.0.0.22 1.3.6.1.2.1.1.5.0
 ```
 
-Expect **`STRING: "<hostname>"`** (MIB-II **sysName**). **`snmp`** package: **`sudo apt-get install snmp`**.
+Use any **`csr_lab`** **`ansible_host`** from **`hosts.yml`** (example IPs in this repo: **`10.0.0.20`**, **`10.0.0.22`**, **`10.0.0.23`** — confirm yours).
+
+Expect **`STRING: "hostname"`** (MIB-II **sysName**, e.g. **`r2.homelab.com`**).
 
 If this times out — fix **routing** (TIGger → **`ansible_host`**) before blaming Telegraf.
 
@@ -68,22 +70,7 @@ from(bucket: "YOUR_BUCKET")
 
 ## Manual IOS reference (same as template)
 
-Roughly equivalent to **[`infra/ansible/playbooks/csr_snmp.yml`](../../../infra/ansible/playbooks/csr_snmp.yml)** (preferred) and **`iosxe_snmp_lab.j2`** for hand-paste (**remarks must stay ASCII-only**):
-
-```
-configure terminal
-ip access-list extended LAB-SNMP-V2XTND
- remark SNMP RO - Tigger telemetry 10.0.0.24
- permit udp host 10.0.0.24 any eq snmp
- deny ip any any
-exit
-snmp-server community YOUR_RO LAB-SNMP-V2XTND
-end
-```
-
-Use **`exit`** once after the ACL so you return to **global config** before **`snmp-server`**. A bare **`!`** between stanzas can terminate **configure** on some IOS paths so **`snmp-server` never applies** (you end up with no **`snmp-server`** lines despite a “successful” push).
-
-Adjust **ACL / community** naming if you collide with existing lab config (**`show run | sec snmp`**).
+Hand-paste mirror: **[`infra/ansible/templates/iosxe_snmp_lab.j2`](../../../infra/ansible/templates/iosxe_snmp_lab.j2)** (or run **`csr_snmp.yml`**). Uses a **numbered standard ACL** (**default 87**) and **`snmp-server community … RO 87`**.
 
 ## Troubleshooting Ansible
 

@@ -1,43 +1,38 @@
 ---
-# Read-only — confirm snmp stanza + telemetry ACL exist.
-# Prefer full `show running-config` probe: piped filters (`| include snmp-server`)
-# silently empty on some ansible network_cli transports despite real config lines.
-#
-#   cd infra/ansible && uv run ansible-playbook playbooks/verify_csr_snmp.yml
+# Read-only — confirm snmp stanza + standard ACL {{ csr_snmp_standard_acl_num }}.
 
-- name: Cisco CSR — verify SNMP lab snippets
+- name: Cisco CSR - verify SNMP lab snippets
   hosts: csr_lab
   gather_facts: false
 
   tasks:
-    # Named extended ACLs: `show access-lists NAME` (not `show ip access-list extended NAME` for named ACLs).
-    - name: Named ACL {{ csr_snmp_acl_name }}
+    - name: Numbered standard ACL {{ csr_snmp_standard_acl_num }}
       cisco.ios.ios_command:
         commands:
-          - show access-lists {{ csr_snmp_acl_name }}
+          - show ip access-list {{ csr_snmp_standard_acl_num }}
       register: verify_snmp_acl
 
-    - name: Full running-config (length 0 → dump) — grep snmp-server locally
+    - name: Full running-config for snmp substring
       cisco.ios.ios_command:
         commands:
           - terminal length 0
           - show running-config
       register: verify_run_full
 
-    - name: running-config probe size (nonzero confirms transport returned full dump)
-      ansible.builtin.debug:
-        msg: "running-config length={{ verify_run_full.stdout | length }} chars"
+    - ansible.builtin.set_fact:
+        verify_run_plain: "{{ ([verify_run_full.stdout | default('')]) | flatten | join('\n') }}"
 
-    - name: Print ACL
+    - name: running-config probe size
+      ansible.builtin.debug:
+        msg: "running-config length={{ verify_run_plain | length }} chars"
+
+    - name: Print numbered ACL
       ansible.builtin.debug:
         var: verify_snmp_acl.stdout_lines
 
-    - name: Require snmp-server community stanza (substring in full running-config)
+    - name: Require snmp-server community stanza
       ansible.builtin.assert:
         that:
-          - verify_run_full.stdout is defined
-          - "'snmp-server community' in (verify_run_full.stdout | default(''))"
+          - "'snmp-server community' in verify_run_plain"
         fail_msg: >-
-          No `snmp-server community` substring in running-config after full dump.
-          IOS did not persist the stanza — re-run playbooks/csr_snmp.yml and check for `% Invalid`
-          messages in snmp_apply (conf t ios_command).
+          No `snmp-server community` substring in running-config. Re-run playbooks/csr_snmp.yml (--diff).

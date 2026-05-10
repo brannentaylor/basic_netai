@@ -1,12 +1,15 @@
-{# Phase A2: SNMP v2 RO; ACL restricts poll source (basic_netai lab).
-   IOS rejects non-ASCII in remarks (e.g. em dash sends invalid input).
+{# Phase A2 — SNMPv2 RO: numbered STANDARD ACL (source = Tigger) + snmp-server RO <number>.
+   Mirrors playbooks/csr_snmp.yml. Lab-only ASCII.
+   Replace {{ csr_snmp_standard_acl_num }} / community in Ansible or by hand consistently.
 #}
-{# Human copy-paste / doc mirror of playbooks/csr_snmp.yml tasks.
-   Apply from configure terminal: use `exit` (one level) after the ACL, not `!` (can pop to exec).
-#}
-ip access-list extended {{ csr_snmp_acl_name }}
- remark SNMP RO - Tigger telemetry {{ tigger_snmp_collector_ipv4 }}
- permit udp host {{ tigger_snmp_collector_ipv4 }} any eq snmp
- deny ip any any
+configure terminal
+no snmp-server
+no access-list {{ csr_snmp_standard_acl_num }}
 exit
-snmp-server community {{ csr_snmp_ro_community }} RO {{ csr_snmp_acl_name }}
+configure terminal
+access-list {{ csr_snmp_standard_acl_num }} permit host {{ tigger_snmp_collector_ipv4 }}
+exit
+configure terminal
+snmp-server community "{{ csr_snmp_ro_community }}" RO {{ csr_snmp_standard_acl_num }}
+end
+write memory
