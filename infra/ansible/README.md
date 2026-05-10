@@ -84,6 +84,13 @@ Ubuntu may ship **sudo-rs**. A few sharp edges:
    uv run ansible-playbook playbooks/csr_logging.yml
    ```
 
+SNMP read-only toward **TIGger** (**Phase A2** telemetry — **`docs/monitoring/tig/snmp-ios-xe.md`**):
+
+```bash
+export CSR_SNMP_RO_COMMUNITY='your-lab-read-only-string'
+uv run ansible-playbook playbooks/csr_snmp.yml --diff
+```
+
 3. **Loopback0 + controlled OSPF redistribution** (human-gated — read the design first):
 
    Peer review: **`docs/design/2026-05-09-loopback-ospf-redistribution.md`**

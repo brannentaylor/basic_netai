@@ -1,6 +1,6 @@
 # Design: TIG stack on host TIGger (SNMP Phase A; gNMI Phase B deferred)
 
-**Status:** Approved plan — **A0**/**A1** install scaffolding in **`infra/tig/`** and **`docs/monitoring/tig/README.md`**; **A2**+ not done in-repo at last update  
+**Status:** Approved plan — **A0**/**A1**/**A1-smoke** + **A2** scaffolding in **`infra/tig/`**, **`infra/ansible/playbooks/csr_snmp.yml`**, **`docs/monitoring/tig/`**; **A3** dashboards not in-repo yet  
 **Audience:** Operators + coding agents picking up after a fresh chat  
 
 **Mirrors Cursor plan:** SNMP-first for **CSR IOS-XE 16.05.01b**; **gNMI / MDT only after IOS upgrade**.
@@ -29,14 +29,15 @@
 
 ---
 
-## Intended repo additions (implement next agent)
+## Repo layout (SNMP path)
 
 | Path | Purpose |
 | --- | --- |
 | **`docs/monitoring/tig/README.md`** | Operational hub — ports, phase checklist, SNMP vs gNMI table |
 | **`docs/monitoring/tig/snmp-ios-xe.md`** | **`snmp-server`** patterns for CSR 16.05 |
-| **`docs/monitoring/tig/gnmi-roadmap.md`** | Phase B checklist (no router changes until gate passes) |
-| **`infra/tig/`** | Install/script skeletons + **`dotenv.example`** (**no secrets in git**) |
+| **`docs/monitoring/tig/gnmi-roadmap.md`** | Phase B gate (defer gNMI until IOS upgrade) |
+| **`infra/tig/`** | Install scripts + **`dotenv.example`** (**no secrets in git**) + SNMP fragment **`render_telegraf_snmp_fragment.py`** |
+| **`infra/ansible/playbooks/csr_snmp.yml`** | Push ACL + RO community (**`CSR_SNMP_RO_COMMUNITY`**) |
 
 ---
 

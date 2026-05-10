@@ -139,9 +139,59 @@ Prerequisites: **`infra/tig/.env`** on **TIGger** has **`INFLUX_ORG`**, **`INFLU
    Use **`your`** bucket string if different from **`lab-bucket`**.
 4. If you already had **`[[inputs.cpu]]`** enabled in **`/etc/telegraf/telegraf.conf`**, **cpu** might appear duplicated — for smoke that is harmless; tighten later.
 
-## Related docs (as they land)
+## Phase A2 — CSR SNMP (Ansible routers + Telegraf on TIGger)
+
+**Goal:** **`csr_snmp`** measurements in Grafana (**sysName**, **sysUpTime**) polled from **TIGger** to each CSR **`ansible_host`**.
+
+### 1 — Routers (from control node with Ansible)
+
+Uses **[`infra/ansible/playbooks/csr_snmp.yml`](../../../infra/ansible/playbooks/csr_snmp.yml)** and **[`infra/ansible/templates/iosxe_snmp_lab.j2`](../../../infra/ansible/templates/iosxe_snmp_lab.j2)**. Vars: **`tigger_snmp_collector_ipv4`**, **`csr_snmp_acl_name`** in **`inventory/group_vars/csr_lab.yml`**.
+
+Dry-run optional:
+
+```bash
+cd ~/basic_netai/infra/ansible
+export CSR_SSH_USERNAME=cisco CSR_SSH_PASSWORD='…'
+export CSR_SNMP_RO_COMMUNITY='your-lab-read-only-string'
+uv run ansible-playbook playbooks/csr_snmp.yml --check --diff
+uv run ansible-playbook playbooks/csr_snmp.yml --diff
+```
+
+Use the **same** read-only community string locally on **TIGger** (next step).
+
+### 2 — Prove SNMP from TIGger
+
+```bash
+sudo apt-get install -y snmp
+SNMP_RO_COMMUNITY='your-lab-read-only-string'
+snmpget -v2c -c "$SNMP_RO_COMMUNITY" 10.0.0.20 1.3.6.1.2.1.1.5.0
+```
+
+(Replace **`10.0.0.20`** with any **`csr_lab`** management IP.)
+
+### 3 — Telegraf fragment + env (on TIGger repo root)
+
+1. **`infra/tig/.env`** — add **`SNMP_RO_COMMUNITY=…`** (**[`dotenv.example`](../../../infra/tig/dotenv.example)**).
+2. **`sudo bash infra/tig/install_telegraf_snmp_csr.sh`**
+
+Installer writes **`/etc/telegraf/telegraf.d/96-snmp-csr.conf`** from **`infra/ansible/inventory/hosts.yml`**, **`/etc/telegraf/snmp_lab.env`**, and **`telegraf.service.d/snmp-lab-env.conf`**. It installs **`python3-yaml`** via APT when needed.
+
+Re-run **`install_telegraf_snmp_csr.sh`** after **`hosts.yml`** changes.
+
+### 4 — Grafana Explore (Flux)
+
+```flux
+from(bucket: "YOUR_BUCKET")
+  |> range(start: -30m)
+  |> filter(fn: (r) => r._measurement == "csr_snmp")
+  |> limit(n: 15)
+```
+
+**Reference:** **`snmp-ios-xe.md`**, **`../../design/2026-05-10-tigger-TIG-snmp-phased.md`**.
+
+## Related docs
 
 | Doc | Purpose |
 | --- | --- |
-| **`snmp-ios-xe.md`** | CSR `snmp-server` patterns for 16.05 |
-| **`gnmi-roadmap.md`** | Phase B checklist (no router work until image gate) |
+| **`snmp-ios-xe.md`** | CSR `snmp-server`, **`snmpget`**, Telegraf fragment notes |
+| **`gnmi-roadmap.md`** | Phase B gate (no gNMI until IOS upgrade) |

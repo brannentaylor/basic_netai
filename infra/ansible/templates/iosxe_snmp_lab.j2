@@ -1,0 +1,7 @@
+{# Phase A2 — SNMPv2c read-only, ACL restricts sources to telemetry host only (basic_netai lab). #}
+ip access-list extended {{ csr_snmp_acl_name }}
+ remark SNMP RO — only telemetry host {{ tigger_snmp_collector_ipv4 }}
+ permit udp host {{ tigger_snmp_collector_ipv4 }} any eq snmp
+ deny   ip any any
+!
+snmp-server community {{ csr_snmp_ro_community }} RO {{ csr_snmp_acl_name }}

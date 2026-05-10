@@ -13,4 +13,9 @@ INFLUX_URL=http://127.0.0.1:8086
 
 # Phase A1-smoke — Telegraf localhost → Influx (install_telegraf_smoke.sh reads these)
 
-# Phase A2+ — Telegraf SNMP (later; Ansible inventory CSR mgmt IPs)
+# Phase A2 — Telegraf SNMP to csr_lab (install_telegraf_snmp_csr.sh)
+# Match CSR_SNMP_RO_COMMUNITY used with: ansible-playbook playbooks/csr_snmp.yml
+SNMP_RO_COMMUNITY=your-lab-read-only-community
+
+# Optional — scrape interval for generated [[inputs.snmp]] (default 60s)
+# TELEGRAF_CSR_SNMP_INTERVAL=60s

@@ -1,0 +1,27 @@
+---
+# Phase A2 — SNMP read-only for Influx telemetry (TIGger polls CSRs).
+# Community string MUST come from the environment — never committed.
+#
+# Prerequisites: CSR management reachable from Ansible control node;
+#               Tigger (10.x) can reach csr_lab ansible_host with UDP 161 open on CSR.
+#
+# Export CSR_SNMP_RO_COMMUNITY (same value configured on routers and on Tigger .env SNMP_RO_COMMUNITY).
+- name: Cisco CSR — SNMP lab (ACL + RO community)
+  hosts: csr_lab
+  gather_facts: false
+  vars:
+    csr_snmp_ro_community: "{{ lookup('env', 'CSR_SNMP_RO_COMMUNITY') | default('', true) }}"
+  tasks:
+    - name: Fail if SNMP RO community missing from env
+      ansible.builtin.assert:
+        that:
+          - csr_snmp_ro_community | length > 0
+        fail_msg: >-
+          Set CSR_SNMP_RO_COMMUNITY before running this playbook (lab-only RO string shared with Telegraf SNMP_RO_COMMUNITY on Tigger).
+          Example: export CSR_SNMP_RO_COMMUNITY='your-lab-ro'
+
+    - name: Apply SNMP stanza + extended ACL (idempotent merge)
+      cisco.ios.ios_config:
+        src: "{{ playbook_dir }}/../templates/iosxe_snmp_lab.j2"
+        save_when: changed
+      no_log: true
