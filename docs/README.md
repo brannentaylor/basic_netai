@@ -16,5 +16,6 @@
 | [journal/README.md](journal/README.md) | Public build log format |
 | [journal/2026-05-09-ansible-syslog-session.md](journal/2026-05-09-ansible-syslog-session.md) | Example session wrap (baselines JSON, instruction manual, syslog ruleset) |
 | [decisions/README.md](decisions/README.md) | ADR index |
+| [design/2026-05-10-tigger-TIG-snmp-phased.md](design/2026-05-10-tigger-TIG-snmp-phased.md) | TIG on TIGger: SNMP Phase A / gNMI Phase B deferred (CSR 16.05.x) |
 
 Prompts either live in journal entries or [prompts/README.md](prompts/README.md).
