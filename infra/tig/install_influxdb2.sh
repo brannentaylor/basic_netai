@@ -9,6 +9,12 @@ if [[ "$(id -u)" -ne 0 ]]; then
 fi
 
 export DEBIAN_FRONTEND=noninteractive
+
+# Earlier attempts may have written ubuntu/<codename> before we fall back to
+# debian stable — that leaves a broken entry and makes the *first* apt-update
+# fail before this script can fix it. Drop stale Influx lists, then refresh APT.
+rm -f /etc/apt/sources.list.d/influxdata.list
+
 apt-get update
 apt-get install -y ca-certificates curl gnupg
 
