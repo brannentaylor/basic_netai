@@ -1,6 +1,7 @@
 ---
-# Read-only — show snmp-server stanza + telemetry ACL so you can confirm community + binds.
-# SSH session output is not redacted here; safe for private terminals only.
+# Read-only — confirm snmp stanza + telemetry ACL exist.
+# Prefer full `show running-config` probe: piped filters (`| include snmp-server`)
+# silently empty on some ansible network_cli transports despite real config lines.
 #
 #   cd infra/ansible && uv run ansible-playbook playbooks/verify_csr_snmp.yml
 
@@ -9,33 +10,34 @@
   gather_facts: false
 
   tasks:
-    - name: Show snmp-server lines in running-config
-      cisco.ios.ios_command:
-        commands:
-          - show running-config | include snmp-server
-      register: verify_snmp_server
-
-    # Named extended ACLs: use `show access-lists NAME` — `show ip access-list extended NAME`
-    # is for numbered ACLs only on many IOS-XE builds (INVALID INPUT at caret).
-    - name: Show named ACL {{ csr_snmp_acl_name }}
+    # Named extended ACLs: `show access-lists NAME` (not `show ip access-list extended NAME` for named ACLs).
+    - name: Named ACL {{ csr_snmp_acl_name }}
       cisco.ios.ios_command:
         commands:
           - show access-lists {{ csr_snmp_acl_name }}
       register: verify_snmp_acl
 
-    - name: Print snmp-server snippet
+    - name: Full running-config (length 0 → dump) — grep snmp-server locally
+      cisco.ios.ios_command:
+        commands:
+          - terminal length 0
+          - show running-config
+      register: verify_run_full
+
+    - name: running-config probe size (nonzero confirms transport returned full dump)
       ansible.builtin.debug:
-        var: verify_snmp_server.stdout_lines
+        msg: "running-config length={{ verify_run_full.stdout | length }} chars"
 
     - name: Print ACL
       ansible.builtin.debug:
         var: verify_snmp_acl.stdout_lines
 
-    - name: Require snmp-server community (Telegraf/snmpwalk will fail without this)
+    - name: Require snmp-server community stanza (substring in full running-config)
       ansible.builtin.assert:
         that:
-          - verify_snmp_server.stdout is defined
-          - "'snmp-server community' in (verify_snmp_server.stdout | default(''))"
+          - verify_run_full.stdout is defined
+          - "'snmp-server community' in (verify_run_full.stdout | default(''))"
         fail_msg: >-
-          No snmp-server community line in running-config. Re-run playbooks/csr_snmp.yml --diff (ensure git has
-          meta: reset_connection between ACL and snmp tasks so the snmp-server stanza reaches global config).
+          No `snmp-server community` substring in running-config after full dump.
+          IOS did not persist the stanza — re-run playbooks/csr_snmp.yml and check for `% Invalid`
+          messages in snmp_apply (conf t ios_command).

@@ -12,24 +12,22 @@ uv run ansible-playbook playbooks/csr_snmp.yml --diff
 uv run ansible-playbook playbooks/verify_csr_snmp.yml
 ```
 
-**`verify_csr_snmp.yml`** runs **`show running-config | include snmp-server`** plus the telemetry ACL (**community strings appear there — do not paste into public chats**).
+**`verify_csr_snmp.yml`** uses **`terminal length 0` + full `show running-config`** and asserts the substring **`snmp-server community`** (plus **`show access-lists`**). Do not trust **`show run | inc snmp-server`** alone from **Ansible** on some **network_cli / scrapli** transports: it can echo **empty** even when snmp lines exist. **Communities appear in the blob — do not paste into public chats.**
 
-On the routers directly:
+On the routers directly (CLI is usually fine with pipes):
 
 ```text
 show running-config | include snmp-server
 show access-lists BASIC-NETAI-SNMP-TIGGER
 ```
 
-Use **`show access-lists NAME`** for **named** extended ACLs. **`show ip access-list extended <name>`** is for **numbered** extended ACLs on many IOS-XE images and fails with **`% Invalid input`** if you paste the ACL **name**.
+Use **`show access-lists NAME`** for **named** extended ACLs. **`show ip access-list extended <name>`** is for **numbered** extended ACLs on many IOS-XE images and fails with **`% Invalid`** if you paste the ACL **name**.
 
-Some images also support **`show snmp community`** — try it if **`include snmp-server`** is empty despite Telegraf/snmpwalk working (**`parser view`** / SNMP-MIB quirks are rare on CSR but possible).
+**`csr_snmp.yml`** applies the ACL with **`ios_config`**, then applies **`snmp-server community "…" RO <acl>`** with explicit **`configure terminal` / `ios_command`** when the full running-config probe misses that substring — **`ios_config` alone was observed reporting `changed` without the line persisting**.
 
-If **`verify_csr_snmp.yml`** shows the **ACL** but **no** **`snmp-server community`** lines: the **global** community stanza never landed (Telegraf cannot poll). Ensure **`csr_snmp.yml`** includes **`ansible.builtin.meta: reset_connection`** **between** the ACL task and **`snmp-server`** (clears rare stuck **`network_cli`** submode); then **`git pull`** and rerun **`csr_snmp.yml --diff`**.
+If apply still fails, read **`% Invalid`** lines in the **`ios_command`** task output and use **`show archive config differences`** on the CSR.
 
-If the playbook still skips **`snmp-server`**, **`show archive config differences`** on the CSR.
-
-The playbook merges:
+The playbook installs:
 
 - **`ip access-list extended BASIC-NETAI-SNMP-TIGGER`** — **`permit udp host <TIGger> any eq snmp`**, **`deny ip any any`**.
 - **`snmp-server community <RO> RO BASIC-NETAI-SNMP-TIGGER`**

@@ -6,6 +6,9 @@
 #               Tigger (10.x) can reach csr_lab ansible_host with UDP 161 open on CSR.
 #
 # Export CSR_SNMP_RO_COMMUNITY (same value configured on routers and on Tigger .env SNMP_RO_COMMUNITY).
+#
+# Note: ios_config occasionally reported snmp-server applied when it never appeared in running-config on
+# some CSR / transport stacks — snmp stanza uses explicit conf t via ios_command with Invalid detection.
 - name: Cisco CSR — SNMP lab (ACL + RO community)
   hosts: csr_lab
   gather_facts: false
@@ -20,8 +23,7 @@
           Set CSR_SNMP_RO_COMMUNITY before running this playbook (lab-only RO string shared with Telegraf SNMP_RO_COMMUNITY on Tigger).
           Example: export CSR_SNMP_RO_COMMUNITY='your-lab-ro'
 
-    # ACL submode first, then global `snmp-server` (do not splice with `!` — that can exit config so
-    # `snmp-server` never lands in running-config). Prefer parents/lines over a monolithic `src` blob.
+    # ACL submode — ios_config handles parents cleanly here.
     - name: Telemetry extended ACL (SNMP source = Tigger only)
       cisco.ios.ios_config:
         lines:
@@ -32,13 +34,31 @@
           - ip access-list extended {{ csr_snmp_acl_name }}
         save_when: changed
 
-    # Rare but observed: persistent `network_cli` can stay nested after extended ACL edits; the next
-    # global `snmp-server` line may never apply cleanly. Closing the SSH session clears submode drift.
-    - name: Flush network connection before snmp-server (global-config) stanza
+    # Rare nested-mode drift across tasks on persistent network_cli
+    - name: Flush network connection before snmp stanza probe / apply
       ansible.builtin.meta: reset_connection
 
-    - name: SNMPv2c read-only community bound to telemetry ACL
-      cisco.ios.ios_config:
-        lines:
-          - snmp-server community {{ csr_snmp_ro_community }} RO {{ csr_snmp_acl_name }}
-        save_when: changed
+    # `show run | inc snmp-server` can return blanks over some scrapli/paramiko transports even when snmp exists.
+    - name: Slurp running-config for snmp stanza probe
+      cisco.ios.ios_command:
+        commands:
+          - terminal length 0
+          - show running-config
+      register: full_running
+
+    - name: Apply snmp-server community (explicit exec → conf t) when missing from running-config
+      when: "'snmp-server community' not in (full_running.stdout | default(''))"
+      cisco.ios.ios_command:
+        commands:
+          - configure terminal
+          - snmp-server community "{{ csr_snmp_ro_community }}" RO {{ csr_snmp_acl_name }}
+          - end
+          - write memory
+      register: snmp_apply
+      failed_when: ("'% Invalid' in (snmp_apply.stdout | default(''))) or ('% Incomplete' in (snmp_apply.stdout | default('')))
+
+    - name: snmp-server already present - apply skipped
+      ansible.builtin.debug:
+        msg: "Probe found snmp-server in running-config."
+        verbosity: 1
+      when: "'snmp-server community' in (full_running.stdout | default(''))"
