@@ -10,7 +10,7 @@
   hosts: csr_lab
   gather_facts: false
   vars:
-    csr_snmp_ro_community: "{{ lookup('env', 'CSR_SNMP_RO_COMMUNITY') | default('', true) }}"
+    csr_snmp_ro_community: "{{ lookup('env', 'CSR_SNMP_RO_COMMUNITY') | default('', true) | trim }}"
   tasks:
     - name: Fail if SNMP RO community missing from env
       ansible.builtin.assert:
@@ -31,6 +31,11 @@
         parents:
           - ip access-list extended {{ csr_snmp_acl_name }}
         save_when: changed
+
+    # Rare but observed: persistent `network_cli` can stay nested after extended ACL edits; the next
+    # global `snmp-server` line may never apply cleanly. Closing the SSH session clears submode drift.
+    - name: Flush network connection before snmp-server (global-config) stanza
+      ansible.builtin.meta: reset_connection
 
     - name: SNMPv2c read-only community bound to telemetry ACL
       cisco.ios.ios_config:

@@ -9,15 +9,33 @@
   gather_facts: false
 
   tasks:
-    # Named extended ACLs: use `show access-lists NAME` — `show ip access-list extended NAME`
-    # is for numbered ACLs only on many IOS-XE builds (INVALID INPUT at caret).
-    - name: Show snmp-server lines and named ACL {{ csr_snmp_acl_name }}
+    - name: Show snmp-server lines in running-config
       cisco.ios.ios_command:
         commands:
           - show running-config | include snmp-server
-          - show access-lists {{ csr_snmp_acl_name }}
-      register: verify_snmp
+      register: verify_snmp_server
 
-    - name: Print verification (per host)
+    # Named extended ACLs: use `show access-lists NAME` — `show ip access-list extended NAME`
+    # is for numbered ACLs only on many IOS-XE builds (INVALID INPUT at caret).
+    - name: Show named ACL {{ csr_snmp_acl_name }}
+      cisco.ios.ios_command:
+        commands:
+          - show access-lists {{ csr_snmp_acl_name }}
+      register: verify_snmp_acl
+
+    - name: Print snmp-server snippet
       ansible.builtin.debug:
-        var: verify_snmp.stdout_lines
+        var: verify_snmp_server.stdout_lines
+
+    - name: Print ACL
+      ansible.builtin.debug:
+        var: verify_snmp_acl.stdout_lines
+
+    - name: Require snmp-server community (Telegraf/snmpwalk will fail without this)
+      ansible.builtin.assert:
+        that:
+          - verify_snmp_server.stdout is defined
+          - "'snmp-server community' in (verify_snmp_server.stdout | default(''))"
+        fail_msg: >-
+          No snmp-server community line in running-config. Re-run playbooks/csr_snmp.yml --diff (ensure git has
+          meta: reset_connection between ACL and snmp tasks so the snmp-server stanza reaches global config).

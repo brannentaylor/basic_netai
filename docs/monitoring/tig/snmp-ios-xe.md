@@ -25,7 +25,9 @@ Use **`show access-lists NAME`** for **named** extended ACLs. **`show ip access-
 
 Some images also support **`show snmp community`** — try it if **`include snmp-server`** is empty despite Telegraf/snmpwalk working (**`parser view`** / SNMP-MIB quirks are rare on CSR but possible).
 
-If **`csr_snmp.yml`** reports **`changed`** but **`verify_csr_snmp.yml`** prints nothing for **`snmp-server`** — rerun **`csr_snmp.yml`** with **`--diff`** (**`-v`**), or **`show archive config differences`** on the CSR.
+If **`verify_csr_snmp.yml`** shows the **ACL** but **no** **`snmp-server community`** lines: the **global** community stanza never landed (Telegraf cannot poll). Ensure **`csr_snmp.yml`** includes **`ansible.builtin.meta: reset_connection`** **between** the ACL task and **`snmp-server`** (clears rare stuck **`network_cli`** submode); then **`git pull`** and rerun **`csr_snmp.yml --diff`**.
+
+If the playbook still skips **`snmp-server`**, **`show archive config differences`** on the CSR.
 
 The playbook merges:
 
