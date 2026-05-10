@@ -6,7 +6,7 @@
 # Notes for Telegraf v1.38+:
 # - outputs.influxdb_v2 no longer honors token_file → use token = "${INFLUX_TOKEN}"
 # - strict env var handling → INFLUX_TOKEN must be injected (systemd EnvironmentFile).
-# - Service files reference TELEGRAF_OPTS; make it explicitly empty via drop-in.
+# - Stock unit appends $TELEGRAF_OPTS; replace ExecStart in a drop-in if unset opts break startup.
 
 set -euo pipefail
 
@@ -22,6 +22,8 @@ CONF_DIR=/etc/telegraf/telegraf.d
 CONF_FRAGMENT="${CONF_DIR}/99-smoke-local.conf"
 TOKEN_ENV=/etc/telegraf/influx_smoke.env
 UNIT_DROPIN=/etc/systemd/system/telegraf.service.d/basic-netai-smoke.conf
+# Populated after `apt-get install telegraf`
+TE_BIN=""
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "Missing $ENV_FILE — copy infra/tig/dotenv.example and fill INFLUX_* ." >&2
@@ -40,6 +42,11 @@ set +a
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y telegraf
+TE_BIN="$(command -v telegraf || true)"
+if [[ -z "${TE_BIN}" ]]; then
+  echo "'telegraf' binary not found on PATH after install." >&2
+  exit 1
+fi
 
 systemctl stop telegraf 2>/dev/null || true
 systemctl reset-failed telegraf 2>/dev/null || true
@@ -100,13 +107,15 @@ chown root:root "${TOKEN_ENV}"
 chmod 0640 "${TOKEN_ENV}"
 
 mkdir -p /etc/systemd/system/telegraf.service.d
-install -o root -g root -m 0644 /dev/stdin "${UNIT_DROPIN}" <<'UNIT'
+# Stock unit uses `... $TELEGRAF_OPTS` at end of ExecStart. When TELEGRAF_OPTS is unset,
+# systemd can still pass an empty argv token; Telegraf then exits 1. Clear + replace ExecStart.
+cat >"${UNIT_DROPIN}" <<UNIT
 [Service]
-# Avoid "Referenced but unset environment variable … TELEGRAF_OPTS" on some installs.
-Environment=TELEGRAF_OPTS=
-# Telegraf ≥1.38 strict env substitution for token = "${INFLUX_TOKEN}" in drop-in snippets.
 EnvironmentFile=/etc/telegraf/influx_smoke.env
+ExecStart=
+ExecStart=${TE_BIN} -config "${MAIN_CONF}" -config-directory "${CONF_DIR}"
 UNIT
+chmod 0644 "${UNIT_DROPIN}"
 
 umask 022
 mkdir -p "${CONF_DIR}"
@@ -129,14 +138,20 @@ chmod 0644 "${CONF_FRAGMENT}"
 
 systemctl daemon-reload
 
-echo "Telegraf foreground test …"
+echo "Telegraf foreground test (as user 'telegraf', matching the service) …"
 set +e
-INFLUX_TOKEN="${INFLUX_TOKEN}" TELEGRAF_OPTS="" \
-  telegraf --config "${MAIN_CONF}" --config-directory "${CONF_DIR}" \
-  --test >/tmp/telegraf-smoke-test.log 2>&1
+if command -v runuser >/dev/null 2>&1; then
+  runuser -u telegraf -- env "INFLUX_TOKEN=${INFLUX_TOKEN}" \
+    "${TE_BIN}" --config "${MAIN_CONF}" --config-directory "${CONF_DIR}" \
+    --test >/tmp/telegraf-smoke-test.log 2>&1
+else
+  sudo -u telegraf env "INFLUX_TOKEN=${INFLUX_TOKEN}" \
+    "${TE_BIN}" --config "${MAIN_CONF}" --config-directory "${CONF_DIR}" \
+    --test >/tmp/telegraf-smoke-test.log 2>&1
+fi
 tf_ec=$?
 set -e
-tail -n 40 /tmp/telegraf-smoke-test.log || true
+tail -n 50 /tmp/telegraf-smoke-test.log || true
 rm -f /tmp/telegraf-smoke-test.log
 
 if [[ "${tf_ec}" -ne 0 ]]; then
@@ -146,6 +161,7 @@ if [[ "${tf_ec}" -ne 0 ]]; then
 fi
 
 systemctl enable telegraf
+systemctl reset-failed telegraf 2>/dev/null || true
 systemctl restart telegraf
 sleep 2
 if ! systemctl is-active --quiet telegraf; then
