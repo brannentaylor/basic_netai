@@ -158,7 +158,7 @@ uv run ansible-playbook playbooks/csr_snmp.yml --diff
 uv run ansible-playbook playbooks/verify_csr_snmp.yml
 ```
 
-**`verify_csr_snmp.yml`** prints **`running-config | include snmp-server`** and the telemetry ACL per CSR (**community strings are visible — lab terminal only**).
+**`verify_csr_snmp.yml`** prints **`running-config | include snmp-server`** and **`show access-lists <acl-name>`** per CSR (**community strings are visible — lab terminal only**).
 
 Use the **same** read-only community string locally on **TIGger** (next step).
 

@@ -18,8 +18,10 @@ On the routers directly:
 
 ```text
 show running-config | include snmp-server
-show ip access-list extended BASIC-NETAI-SNMP-TIGGER
+show access-lists BASIC-NETAI-SNMP-TIGGER
 ```
+
+Use **`show access-lists NAME`** for **named** extended ACLs. **`show ip access-list extended <name>`** is for **numbered** extended ACLs on many IOS-XE images and fails with **`% Invalid input`** if you paste the ACL **name**.
 
 Some images also support **`show snmp community`** — try it if **`include snmp-server`** is empty despite Telegraf/snmpwalk working (**`parser view`** / SNMP-MIB quirks are rare on CSR but possible).
 

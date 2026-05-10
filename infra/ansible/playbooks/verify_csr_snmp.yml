@@ -9,11 +9,13 @@
   gather_facts: false
 
   tasks:
-    - name: Show snmp-server lines and extended ACL {{ csr_snmp_acl_name }}
+    # Named extended ACLs: use `show access-lists NAME` — `show ip access-list extended NAME`
+    # is for numbered ACLs only on many IOS-XE builds (INVALID INPUT at caret).
+    - name: Show snmp-server lines and named ACL {{ csr_snmp_acl_name }}
       cisco.ios.ios_command:
         commands:
           - show running-config | include snmp-server
-          - show ip access-list extended {{ csr_snmp_acl_name }}
+          - show access-lists {{ csr_snmp_acl_name }}
       register: verify_snmp
 
     - name: Print verification (per host)
