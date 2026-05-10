@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
-# Phase A smoke: install Telegraf and write localhost cpu/mem metrics to InfluxDB 2.
-# Reads INFLUX_ORG, INFLUX_BUCKET, INFLUX_TOKEN from infra/tig/.env (never committed).
+# Phase A smoke: Telegraf localhost cpu/mem → InfluxDB 2 (runs on TIGger).
 #
-# Run on TIGger from repo root:
-#   sudo bash infra/tig/install_telegraf_smoke.sh
+# Telegraf stays installed across runs; apt only ensures the package exists.
 #
-# Influx DEB standard unit uses BOTH --config and --config-directory for telegraf.d.
-# Older script revisions appended duplicate @include lines into telegraf.conf; that causes
-# double-loading and startup failure — we strip that block once, then rely on systemd layout.
+# Notes for Telegraf v1.38+:
+# - outputs.influxdb_v2 no longer honors token_file → use token = "${INFLUX_TOKEN}"
+# - strict env var handling → INFLUX_TOKEN must be injected (systemd EnvironmentFile).
+# - Service files reference TELEGRAF_OPTS; make it explicitly empty via drop-in.
 
 set -euo pipefail
 
@@ -18,11 +17,11 @@ fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ENV_FILE="${REPO_ROOT}/infra/tig/.env"
-TOKEN_PATH=/etc/telegraf/influx_token
 MAIN_CONF=/etc/telegraf/telegraf.conf
 CONF_DIR=/etc/telegraf/telegraf.d
-# .conf suffix: --config-directory only loads *.conf on many distro packages (not *.toml).
 CONF_FRAGMENT="${CONF_DIR}/99-smoke-local.conf"
+TOKEN_ENV=/etc/telegraf/influx_smoke.env
+UNIT_DROPIN=/etc/systemd/system/telegraf.service.d/basic-netai-smoke.conf
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "Missing $ENV_FILE — copy infra/tig/dotenv.example and fill INFLUX_* ." >&2
@@ -40,39 +39,84 @@ set +a
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-set +e
 apt-get install -y telegraf
-apt_ec=$?
-set -e
-if [[ "${apt_ec}" -ne 0 ]]; then
-  echo "Warning: apt-get install exited ${apt_ec}." >&2
-  echo "         Continuing — configuring telegraf drop-ins and restarting the service." >&2
-fi
 
 systemctl stop telegraf 2>/dev/null || true
 systemctl reset-failed telegraf 2>/dev/null || true
 
-# Remove erroneous @include appendix from earlier basic_netai script versions (duplicate load).
+restore_stock_main_conf() {
+  [[ -f "$MAIN_CONF" ]] || return 0
+  # Parse-only check of the main config (drops directory loaded separately later).
+  if telegraf --config "$MAIN_CONF" --test >/dev/null 2>&1; then
+    return 0
+  fi
+  local backup="${MAIN_CONF}.bak.$(date +%s)"
+  echo "Backing up unreadable ${MAIN_CONF} → ${backup} and restoring packaged default …" >&2
+  cp -a "$MAIN_CONF" "$backup" || true
+
+  local gz=/usr/share/doc/telegraf/examples/telegraf.conf.gz
+  if [[ -f "$gz" ]]; then
+    zcat "$gz" >"$MAIN_CONF"
+    echo "Restored ${MAIN_CONF} from ${gz}." >&2
+    return 0
+  fi
+
+  local td deb
+  td="$(mktemp -d)"
+  if (
+    cd "$td" && apt-get download -qq telegraf
+  ); then
+    deb="$(echo "${td}/"telegraf_*.deb)"
+    mkdir -p "${td}/x"
+    dpkg-deb -x "$deb" "${td}/x"
+    cp "${td}/x/etc/telegraf/telegraf.conf" "$MAIN_CONF"
+    echo "Restored ${MAIN_CONF} from ${deb##*/} (no doc example .gz)." >&2
+    rm -rf "$td"
+    return 0
+  fi
+  rm -rf "$td"
+  echo "Automatic restore failed — try: sudo apt-get install --reinstall telegraf" >&2
+  return 1
+}
+
 if [[ -f "$MAIN_CONF" ]] && grep -q 'basic_netai install_telegraf_smoke' "$MAIN_CONF"; then
-  echo "Removing legacy basic_netai @include appendix from ${MAIN_CONF} (duplicate fragments break startup)." >&2
+  echo "Removing legacy basic_netai @include appendix from ${MAIN_CONF}." >&2
   sed -i '/^# Added by basic_netai install_telegraf_smoke/,$ d' "$MAIN_CONF"
 fi
-rm -f "${CONF_DIR}/smoke-local.toml"
+
+if ! restore_stock_main_conf; then
+  echo "Could not repair ${MAIN_CONF}; fix or reinstall telegraf, then re-run this script." >&2
+  exit 1
+fi
+
+rm -f "${CONF_DIR}/smoke-local.toml" /etc/telegraf/influx_token
 
 umask 077
-printf '%s' "$INFLUX_TOKEN" >"$TOKEN_PATH"
-chmod 0640 "$TOKEN_PATH"
-chown root:telegraf "$TOKEN_PATH"
+{
+  printf 'INFLUX_TOKEN=%s\n' "${INFLUX_TOKEN}"
+} >"${TOKEN_ENV}.new"
+mv "${TOKEN_ENV}.new" "${TOKEN_ENV}"
+chown root:root "${TOKEN_ENV}"
+chmod 0640 "${TOKEN_ENV}"
 
-mkdir -p "${CONF_DIR}"
+mkdir -p /etc/systemd/system/telegraf.service.d
+install -o root -g root -m 0644 /dev/stdin "${UNIT_DROPIN}" <<'UNIT'
+[Service]
+# Avoid "Referenced but unset environment variable … TELEGRAF_OPTS" on some installs.
+Environment=TELEGRAF_OPTS=
+# Telegraf ≥1.38 strict env substitution for token = "${INFLUX_TOKEN}" in drop-in snippets.
+EnvironmentFile=/etc/telegraf/influx_smoke.env
+UNIT
+
 umask 022
-cat >"$CONF_FRAGMENT" <<EOF
-# Repo: basic_netai — Telegraf smoke (localhost only). Remove when SNMP inputs land.
+mkdir -p "${CONF_DIR}"
+cat >"${CONF_FRAGMENT}" <<EOF
+# Repo: basic_netai — Telegraf smoke (localhost only). Delete when SNMP config lands.
 [[outputs.influxdb_v2]]
   urls = ["http://127.0.0.1:8086"]
   organization = "${INFLUX_ORG}"
   bucket = "${INFLUX_BUCKET}"
-  token_file = "${TOKEN_PATH}"
+  token = "\${INFLUX_TOKEN}"
   timeout = "5s"
 
 [[inputs.cpu]]
@@ -81,24 +125,25 @@ cat >"$CONF_FRAGMENT" <<EOF
 
 [[inputs.mem]]
 EOF
-chmod 0644 "$CONF_FRAGMENT"
+chmod 0644 "${CONF_FRAGMENT}"
 
-# Match distro ExecStart (-config-directory loads ONLY *.conf in telegraf.d on many builds).
-TG_TEST=(telegraf --config "$MAIN_CONF" --config-directory "$CONF_DIR")
+systemctl daemon-reload
 
-echo "Running Telegraf foreground test (matches systemd wiring) ..."
+echo "Telegraf foreground test …"
 set +e
-"${TG_TEST[@]}" --test >/tmp/telegraf-smoke-test.log 2>&1
+INFLUX_TOKEN="${INFLUX_TOKEN}" TELEGRAF_OPTS="" \
+  telegraf --config "${MAIN_CONF}" --config-directory "${CONF_DIR}" \
+  --test >/tmp/telegraf-smoke-test.log 2>&1
 tf_ec=$?
 set -e
-tail -n 45 /tmp/telegraf-smoke-test.log || true
+tail -n 40 /tmp/telegraf-smoke-test.log || true
+rm -f /tmp/telegraf-smoke-test.log
 
 if [[ "${tf_ec}" -ne 0 ]]; then
-  echo "Warning: telegraf --test exited ${tf_ec} (see snippet above)." >&2
-  echo "Continuing with systemctl restart; if the service stays down, inspect journalctl next." >&2
-  journalctl -u telegraf -n 20 --no-pager 2>/dev/null || true
+  echo "telegraf --test exited ${tf_ec}; not starting systemd unit until resolved." >&2
+  journalctl -u telegraf -n 30 --no-pager 2>/dev/null || true
+  exit "${tf_ec}"
 fi
-rm -f /tmp/telegraf-smoke-test.log
 
 systemctl enable telegraf
 systemctl restart telegraf
@@ -107,9 +152,10 @@ if ! systemctl is-active --quiet telegraf; then
   journalctl -u telegraf -n 60 --no-pager >&2 || true
   exit 1
 fi
+
 systemctl --no-pager --full status telegraf || true
 
 echo ""
-echo "Grafana Explore Flux (after ~1m):"
+echo "Grafana Explore Flux (after ~60s scrape interval):"
 echo '  from(bucket: "YOUR_BUCKET") |> range(start: -15m) |> filter(fn: (r) => r._measurement == "cpu") |> limit(n: 5)'
 echo "YOUR_BUCKET=${INFLUX_BUCKET}"
