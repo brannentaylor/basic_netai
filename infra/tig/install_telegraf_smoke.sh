@@ -96,7 +96,8 @@ if ! restore_stock_main_conf; then
   exit 1
 fi
 
-rm -f "${CONF_DIR}/smoke-local.toml" /etc/telegraf/influx_token
+# Legacy smoke used smoke-local.conf + token_file (Telegraf 1.38+ rejects); only 99-smoke-local.conf remains.
+rm -f "${CONF_DIR}/smoke-local.toml" "${CONF_DIR}/smoke-local.conf" /etc/telegraf/influx_token
 
 umask 077
 {
