@@ -1,6 +1,8 @@
-{# Phase A2 — SNMPv2c read-only, ACL restricts sources to telemetry host only (basic_netai lab). #}
+{# Phase A2: SNMP v2 RO; ACL restricts poll source (basic_netai lab).
+   IOS rejects non-ASCII in remarks (e.g. em dash sends invalid input).
+#}
 ip access-list extended {{ csr_snmp_acl_name }}
- remark SNMP RO — only telemetry host {{ tigger_snmp_collector_ipv4 }}
+ remark SNMP RO - Tigger telemetry {{ tigger_snmp_collector_ipv4 }}
  permit udp host {{ tigger_snmp_collector_ipv4 }} any eq snmp
  deny   ip any any
 !

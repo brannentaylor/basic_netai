@@ -13,7 +13,7 @@ cd ~/basic_netai
 uv sync --all-groups
 ```
 
-Install required collections (**no sudo** — they go under `~/.ansible/collections`):
+Install required collections (**no sudo** — they go under `~/.ansible/collections`). From the repo root, **`uv sync --all-groups`** pulls **`ansible-pylibssh`** so **network_cli** prefers **libssh** over paramiko (fewer **host key mismatch** surprises when CSR keys rotate).
 
 ```bash
 cd ~/basic_netai/infra/ansible

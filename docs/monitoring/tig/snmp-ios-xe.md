@@ -48,11 +48,11 @@ from(bucket: "YOUR_BUCKET")
 
 ## Manual IOS reference (same as template)
 
-Roughly equivalent to **[`infra/ansible/templates/iosxe_snmp_lab.j2`](../../../infra/ansible/templates/iosxe_snmp_lab.j2)**:
+Roughly equivalent to **[`infra/ansible/templates/iosxe_snmp_lab.j2`](../../../infra/ansible/templates/iosxe_snmp_lab.j2)** (**remarks must stay ASCII-only**):
 
 ```
 ip access-list extended BASIC-NETAI-SNMP-TIGGER
- remark SNMP RO — only telemetry host 10.0.0.24
+ remark SNMP RO - Tigger telemetry 10.0.0.24
  permit udp host 10.0.0.24 any eq snmp
  deny ip any any
 exit
@@ -60,3 +60,30 @@ snmp-server community YOUR_RO BASIC-NETAI-SNMP-TIGGER
 ```
 
 Adjust **ACL / community** naming if you collide with existing lab config (**`show run | sec snmp`**).
+
+## Troubleshooting Ansible
+
+### `host key mismatch for <ansible_host>`
+
+Paramiko (used when **`ansible-pylibssh`** is not installed) still errors if **`~/.ssh/known_hosts`** has an **older** key for that CSR. Remove the stale entry, then rerun:
+
+```bash
+ssh-keygen -R 10.0.0.20    # csr01 ansible_host — repeat per router IP if needed
+```
+
+The repo dev group includes **`ansible-pylibssh`** — install collections + sync from the repo root:
+
+```bash
+cd ~/basic_netai && uv sync --all-groups
+cd infra/ansible && uv run ansible-galaxy collection install -r requirements.yml
+```
+
+After that, **`ansible-pylibssh`** is available to **network_cli** and the “falling back to paramiko” warning usually goes away.
+
+### `% Invalid input detected` on `remark ...`
+
+Usually **non-ASCII punctuation** copied into **`remark`** (smart quotes, em dashes). Template lines pushed to IOS must be **ASCII** only — use **`-`** not **`—`** in remarks.
+
+### Ansible deprecation: `Direct processing of templates via src`
+
+Tracked upstream in **ansible.netcommon** / **`cisco.ios.ios_config`**. Migrating when the collection exposes a supported **`ansible.builtin.template` + `network_cli`** path is deferred; playbook behavior is unchanged aside from warnings.
