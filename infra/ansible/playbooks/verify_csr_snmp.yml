@@ -1,0 +1,21 @@
+---
+# Read-only — show snmp-server stanza + telemetry ACL so you can confirm community + binds.
+# SSH session output is not redacted here; safe for private terminals only.
+#
+#   cd infra/ansible && uv run ansible-playbook playbooks/verify_csr_snmp.yml
+
+- name: Cisco CSR — verify SNMP lab snippets
+  hosts: csr_lab
+  gather_facts: false
+
+  tasks:
+    - name: Show snmp-server lines and extended ACL {{ csr_snmp_acl_name }}
+      cisco.ios.ios_command:
+        commands:
+          - show running-config | include snmp-server
+          - show ip access-list extended {{ csr_snmp_acl_name }}
+      register: verify_snmp
+
+    - name: Print verification (per host)
+      ansible.builtin.debug:
+        var: verify_snmp.stdout_lines

@@ -155,7 +155,10 @@ export CSR_SSH_USERNAME=cisco CSR_SSH_PASSWORD='…'
 export CSR_SNMP_RO_COMMUNITY='your-lab-read-only-string'
 uv run ansible-playbook playbooks/csr_snmp.yml --check --diff
 uv run ansible-playbook playbooks/csr_snmp.yml --diff
+uv run ansible-playbook playbooks/verify_csr_snmp.yml
 ```
+
+**`verify_csr_snmp.yml`** prints **`running-config | include snmp-server`** and the telemetry ACL per CSR (**community strings are visible — lab terminal only**).
 
 Use the **same** read-only community string locally on **TIGger** (next step).
 

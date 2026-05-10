@@ -9,7 +9,21 @@ From **`infra/ansible/`** with **`CSR_SSH_*`** set (**[`../../../infra/ansible/R
 ```bash
 export CSR_SNMP_RO_COMMUNITY='your-lab-read-only-string'
 uv run ansible-playbook playbooks/csr_snmp.yml --diff
+uv run ansible-playbook playbooks/verify_csr_snmp.yml
 ```
+
+Use **`verify_csr_snmp.yml`** pulls **`show running-config | include snmp-server`** plus the telemetry ACL (**community strings appear there — do not paste into public chats**).
+
+On the routers directly:
+
+```text
+show running-config | include snmp-server
+show ip access-list extended BASIC-NETAI-SNMP-TIGGER
+```
+
+Some images also support **`show snmp community`** — try it if **`include snmp-server`** is empty despite Telegraf/snmpwalk working (**`parser view`** / SNMP-MIB quirks are rare on CSR but possible).
+
+If **`csr_snmp.yml`** reports **`changed`** but **`verify_csr_snmp.yml`** prints nothing for **`snmp-server`** — rerun **`csr_snmp.yml`** with **`--diff`** (**`-v`**), or **`show archive config differences`** on the CSR.
 
 The playbook merges:
 

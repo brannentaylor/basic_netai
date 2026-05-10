@@ -20,8 +20,8 @@
           Set CSR_SNMP_RO_COMMUNITY before running this playbook (lab-only RO string shared with Telegraf SNMP_RO_COMMUNITY on Tigger).
           Example: export CSR_SNMP_RO_COMMUNITY='your-lab-ro'
 
+    # Community string may appear with `ansible-playbook -v` / `--diff` — avoid piping logs to chat.
     - name: Apply SNMP stanza + extended ACL (idempotent merge)
       cisco.ios.ios_config:
         src: "{{ playbook_dir }}/../templates/iosxe_snmp_lab.j2"
         save_when: changed
-      no_log: true
