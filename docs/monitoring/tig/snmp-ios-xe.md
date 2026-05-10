@@ -23,7 +23,7 @@ show access-lists BASIC-NETAI-SNMP-TIGGER
 
 Use **`show access-lists NAME`** for **named** extended ACLs. **`show ip access-list extended <name>`** is for **numbered** extended ACLs on many IOS-XE images and fails with **`% Invalid`** if you paste the ACL **name**.
 
-**`csr_snmp.yml`** applies the ACL with **`ios_config`**, then applies **`snmp-server community "…" RO <acl>`** with explicit **`configure terminal` / `ios_command`** when the full running-config probe misses that substring — **`ios_config` alone was observed reporting `changed` without the line persisting**.
+**`csr_snmp.yml`** first **best-effort `no ip access-list extended|standard <name>`** for **`csr_snmp_acl_name`** (ignores errors) so a **wrong-typed** ACL with the same name does not block **`snmp-server … RO <acl>`** (**`incompatible type already exists` / `could not be allocated`**). Then it builds the ACL with **`ios_config`**, then applies **`snmp-server community "…" RO <acl>`** via **`ios_command`** when the full running-config probe misses that substring.
 
 If apply still fails, read **`% Invalid`** lines in the **`ios_command`** task output and use **`show archive config differences`** on the CSR.
 

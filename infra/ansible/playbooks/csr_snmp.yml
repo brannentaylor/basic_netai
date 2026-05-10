@@ -2,14 +2,13 @@
 # Phase A2 — SNMP read-only for Influx telemetry (TIGger polls CSRs).
 # Community string MUST come from the environment — never committed.
 #
-# Prerequisites: CSR management reachable from Ansible control node;
-#               Tigger (10.x) can reach csr_lab ansible_host with UDP 161 open on CSR.
+# Export CSR_SNMP_RO_COMMUNITY (same value as SNMP_RO_COMMUNITY on Tigger).
 #
-# Export CSR_SNMP_RO_COMMUNITY (same value configured on routers and on Tigger .env SNMP_RO_COMMUNITY).
+# Lab drift: same ACL name can exist as STANDARD while SNMP needs EXTENDED — IOS then errors with
+# "incompatible type" / "could not be allocated". Prelude removes standard + extended for this name.
 #
-# Note: ios_config occasionally reported snmp-server applied when it never appeared in running-config on
-# some CSR / transport stacks — snmp stanza uses explicit conf t via ios_command with Invalid detection.
-- name: Cisco CSR — SNMP lab (ACL + RO community)
+# failed_when uses lowercase substring checks (no bare "%" in expressions — breaks Ansible templating).
+- name: Cisco CSR - SNMP lab (ACL + RO community)
   hosts: csr_lab
   gather_facts: false
   vars:
@@ -23,7 +22,15 @@
           Set CSR_SNMP_RO_COMMUNITY before running this playbook (lab-only RO string shared with Telegraf SNMP_RO_COMMUNITY on Tigger).
           Example: export CSR_SNMP_RO_COMMUNITY='your-lab-ro'
 
-    # ACL submode — ios_config handles parents cleanly here.
+    - name: Best-effort purge of conflicting named ACL STANDARD/EXTENDED
+      cisco.ios.ios_command:
+        commands:
+          - configure terminal
+          - no ip access-list extended {{ csr_snmp_acl_name }}
+          - no ip access-list standard {{ csr_snmp_acl_name }}
+          - end
+      ignore_errors: true
+
     - name: Telemetry extended ACL (SNMP source = Tigger only)
       cisco.ios.ios_config:
         lines:
@@ -34,11 +41,9 @@
           - ip access-list extended {{ csr_snmp_acl_name }}
         save_when: changed
 
-    # Rare nested-mode drift across tasks on persistent network_cli
     - name: Flush network connection before snmp stanza probe / apply
       ansible.builtin.meta: reset_connection
 
-    # `show run | inc snmp-server` can return blanks over some scrapli/paramiko transports even when snmp exists.
     - name: Slurp running-config for snmp stanza probe
       cisco.ios.ios_command:
         commands:
@@ -46,8 +51,16 @@
           - show running-config
       register: full_running
 
-    - name: Apply snmp-server community (explicit exec → conf t) when missing from running-config
-      when: "'snmp-server community' not in (full_running.stdout | default(''))"
+    - name: Normalize running-config text for snmp probe
+      ansible.builtin.set_fact:
+        full_running_plain: "{{ ([full_running.stdout | default('')]) | flatten | join('\n') }}"
+
+    - name: Detect snmp-server community substring
+      ansible.builtin.set_fact:
+        snmp_has_community_line: "{{ 'snmp-server community' in full_running_plain }}"
+
+    - name: Apply snmp-server community (explicit conf t) when missing
+      when: not snmp_has_community_line | bool
       cisco.ios.ios_command:
         commands:
           - configure terminal
@@ -55,10 +68,18 @@
           - end
           - write memory
       register: snmp_apply
-      failed_when: ("'% Invalid' in (snmp_apply.stdout | default(''))) or ('% Incomplete' in (snmp_apply.stdout | default('')))
+      # Substrings only (no stray "% …" literals — Ansible templating chokes). One expression = explicit OR.
+      failed_when:
+        - >-
+          (
+          ('could not be allocated' in (((snmp_apply.stdout_lines | default([]) | flatten | join('\n')) ~ (snmp_apply.stderr | default(''))) | lower))
+          or ('incompatible type' in (((snmp_apply.stdout_lines | default([]) | flatten | join('\n')) ~ (snmp_apply.stderr | default(''))) | lower))
+          or ('incomplete' in (((snmp_apply.stdout_lines | default([]) | flatten | join('\n')) ~ (snmp_apply.stderr | default(''))) | lower))
+          or ('invalid' in (((snmp_apply.stdout_lines | default([]) | flatten | join('\n')) ~ (snmp_apply.stderr | default(''))) | lower))
+          )
 
     - name: snmp-server already present - apply skipped
       ansible.builtin.debug:
         msg: "Probe found snmp-server in running-config."
         verbosity: 1
-      when: "'snmp-server community' in (full_running.stdout | default(''))"
+      when: snmp_has_community_line | bool
