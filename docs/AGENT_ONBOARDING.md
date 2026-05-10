@@ -64,7 +64,7 @@ These items reflect the **intent of the project thread**; exact Git history is *
 
 Strategic note (from discussion, not code): **Ansible** is the primary **declarative** vehicle here; **NETCONF/RESTCONF** can be a future layer for **more structured** agent reads.
 
-**TIG telemetry (planned, not scaffolded yet):** Telegraf + InfluxDB + Grafana on lab host **TIGger**. **SNMP first** (`CSR` **IOS-XE 16.05.x**); **gNMI deferred** until image upgrade — see **`docs/design/2026-05-10-tigger-TIG-snmp-phased.md`**.
+**TIG telemetry:** Telegraf + InfluxDB + Grafana on a **dedicated** Ubuntu server **TIGger** (**not** the syslog/control VM on **`10.0.0.0/24`** — **`docs/monitoring/tig/README.md`**). **This lab, TIGger mgmt IP:** **`10.0.0.24`**. **SNMP first** (`CSR` **IOS-XE 16.05.x**); **gNMI deferred** until image upgrade — **`docs/design/2026-05-10-tigger-TIG-snmp-phased.md`**, **`infra/tig/`** install scripts (**A0** chrony/ufw, **A1** Influx/Grafana).
 
 ---
 

@@ -1,0 +1,15 @@
+# Copy to `.env` on TIGger (same directory as scripts or export before running).
+# Never commit `.env` or real tokens/passwords.
+#
+# Phase A0 — ufw lab restriction (on host TIGger, mgmt 10.0.0.24)
+# CIDR allowed to reach Grafana (3000/tcp) and InfluxDB 2 HTTP (8086/tcp).
+TIG_LAB_ALLOW_CIDR=10.0.0.0/24
+
+# Phase A1 — InfluxDB 2 (after `influx setup` on TIGger; fill .env locally, never commit)
+INFLUX_URL=http://127.0.0.1:8086
+# INFLUX_ORG=netai-lab
+# INFLUX_BUCKET=csr_metrics
+# INFLUX_TOKEN=paste-admin-token-from-influx-setup
+
+# Phase A2+ — Telegraf / SNMP (illustrative; configure in telegraf.conf)
+# CSR management addresses come from Ansible inventory when wiring polls.

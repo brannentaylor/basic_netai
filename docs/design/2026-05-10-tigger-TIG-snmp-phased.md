@@ -1,6 +1,6 @@
 # Design: TIG stack on host TIGger (SNMP Phase A; gNMI Phase B deferred)
 
-**Status:** Approved plan — implementation not started in-repo at save time  
+**Status:** Approved plan — **A0**/**A1** install scaffolding in **`infra/tig/`** and **`docs/monitoring/tig/README.md`**; **A2**+ not done in-repo at last update  
 **Audience:** Operators + coding agents picking up after a fresh chat  
 
 **Mirrors Cursor plan:** SNMP-first for **CSR IOS-XE 16.05.01b**; **gNMI / MDT only after IOS upgrade**.
@@ -12,7 +12,7 @@
 | Item | Choice |
 | --- | --- |
 | **TIG** | **Telegraf + InfluxDB + Grafana** |
-| **Collector host** | **TIGger** (example sizing: 8 vCPU, 8 GB RAM, 100 GB SSD Ubuntu) |
+| **Collector host** | **TIGger** — **its own** Ubuntu VM (**not** the **`lab_syslog_collector`** / AnsibleUbuntu host on **`10.0.0.0/24`**). Example sizing: 8 vCPU, 8+ GB RAM, 100 GB SSD. **Lab mgmt IPv4:** **`10.0.0.24`**. |
 | **Repo home** | **basic_netai** |
 | **CSR reality** | **IOS-XE 16.05.01b** — treat **SNMP** as the practical metrics path; **gNMI** deferred |
 | **Syslog today** | Stays **[`docs/monitoring/syslog.md`](../monitoring/syslog.md)** (CSR → Ubuntu **`all.log`**), separate pipeline from TIG metrics until you deliberately bridge |
