@@ -13,6 +13,8 @@ Python import package: **`network_lab`** (project name on PyPI style: `basic-net
 
 Public build log, ADRs, replication steps, and agent-safety notes live under [`docs/README.md`](docs/README.md).
 
+**New AI agent or collaborator:** read [`AGENTS.md`](AGENTS.md) → [`docs/AGENT_ONBOARDING.md`](docs/AGENT_ONBOARDING.md) first.
+
 ## For human network engineers
 
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — how to change the repo safely, run checks, escalate.
