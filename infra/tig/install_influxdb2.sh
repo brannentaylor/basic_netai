@@ -18,9 +18,14 @@ rm -f /etc/apt/sources.list.d/influxdata.list
 apt-get update
 apt-get install -y ca-certificates curl gnupg
 
-KEY=/etc/apt/trusted.gpg.d/influxdata-archive_compat.gpg
-curl -fsSL https://repos.influxdata.com/influxdata-archive_compat.key | gpg --dearmor -o "$KEY"
+# Use influxdata-archive.key (current signing subkeys). Do not use
+# influxdata-archive_compat.key — it is obsolete per InfluxData key rotation.
+install -d -m 0755 /etc/apt/keyrings
+KEY=/etc/apt/keyrings/influxdata.gpg
+rm -f "$KEY"
+curl -fsSL https://repos.influxdata.com/influxdata-archive.key | gpg --batch --dearmor -o "$KEY"
 chmod 0644 "$KEY"
+rm -f /etc/apt/trusted.gpg.d/influxdata-archive_compat.gpg
 
 # shellcheck disable=SC1091
 source /etc/os-release
