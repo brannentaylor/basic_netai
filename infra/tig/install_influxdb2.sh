@@ -18,8 +18,23 @@ chmod 0644 "$KEY"
 
 # shellcheck disable=SC1091
 source /etc/os-release
-# e.g. ubuntu/noble, debian/bookworm — matches InfluxData repo layout.
-echo "deb [signed-by=${KEY}] https://repos.influxdata.com/${ID} ${VERSION_CODENAME} stable" >/etc/apt/sources.list.d/influxdata.list
+# InfluxData publishes per-codename Ubuntu pockets (e.g. noble, jammy). New or
+# non-LTS Ubuntu releases (e.g. questing) may 404 until Influx adds them — use
+# the Debian stable channel as a compatible fallback for influxdb2 packages.
+LIST=/etc/apt/sources.list.d/influxdata.list
+if [[ "${ID}" == "ubuntu" ]]; then
+  case "${VERSION_CODENAME}" in
+    focal|jammy|noble|mantic|lunar)
+      echo "deb [signed-by=${KEY}] https://repos.influxdata.com/ubuntu ${VERSION_CODENAME} stable" >"$LIST"
+      ;;
+    *)
+      echo "Note: using InfluxData debian stable channel (no usable ubuntu/${VERSION_CODENAME} pocket)." >&2
+      echo "deb [signed-by=${KEY}] https://repos.influxdata.com/debian stable main" >"$LIST"
+      ;;
+  esac
+else
+  echo "deb [signed-by=${KEY}] https://repos.influxdata.com/${ID} ${VERSION_CODENAME} stable" >"$LIST"
+fi
 
 apt-get update
 apt-get install -y influxdb2

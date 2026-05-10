@@ -107,7 +107,7 @@ Run from the **repo root** on **TIGger** (e.g. **`cd ~/basic_netai`**), after **
 
 Prerequisites: **`Phase A0`** complete so **`ufw`** allows **SSH** and **8086** / **3000** from **`TIG_LAB_ALLOW_CIDR`** (`10.0.0.0/24`).
 
-1. **`sudo bash infra/tig/install_influxdb2.sh`** — APT repo + **`influxdb2`** package, enable **`influxdb`** service.
+1. **`sudo bash infra/tig/install_influxdb2.sh`** — APT repo + **`influxdb2`** package, enable **`influxdb`** service. **If APT reports 404** for **`repos.influxdata.com/ubuntu`** with your release codename, you are probably on a **very new** Ubuntu: **`git pull`** the repo (script falls back to **Debian stable**) or see **[`../../design/2026-05-10-tigger-TIG-snmp-phased.md`](../../design/2026-05-10-tigger-TIG-snmp-phased.md)** — the installer prints **`Note: using InfluxData debian stable channel…`** when it uses the fallback.
 2. **First-time Influx setup** (interactive), as a normal user on **TIGger** (not root): **`influx setup`** — choose org name, bucket (e.g. **`csr_metrics`**), retention, admin user/password. Copy the **`token`** printed at the end.
 3. Edit **the same file** **`infra/tig/.env`** you created in **A0** (still on **TIGger**). Add the Influx lines from **`dotenv.example`**: **`INFLUX_URL`**, **`INFLUX_ORG`**, **`INFLUX_BUCKET`**, **`INFLUX_TOKEN`** (paste the token **`influx setup`** printed). Still **never commit** **`infra/tig/.env`**.
 4. **`sudo bash infra/tig/install_grafana.sh`** — Grafana OSS; first visit to **`http://10.0.0.24:3000/`** (from **`10.0.0.0/24`**) or **`ssh -L 3000:127.0.0.1:3000 tigger`** then **`http://127.0.0.1:3000`** sets the Grafana admin password.
