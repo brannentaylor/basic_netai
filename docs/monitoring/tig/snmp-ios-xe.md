@@ -23,9 +23,11 @@ show access-lists BASIC-NETAI-SNMP-TIGGER
 
 Use **`show access-lists NAME`** for **named** extended ACLs. **`show ip access-list extended <name>`** is for **numbered** extended ACLs on many IOS-XE images and fails with **`% Invalid`** if you paste the ACL **name**.
 
-**`csr_snmp.yml`** first **best-effort `no ip access-list extended|standard <name>`** for **`csr_snmp_acl_name`** (ignores errors) so a **wrong-typed** ACL with the same name does not block **`snmp-server … RO <acl>`** (**`incompatible type already exists` / `could not be allocated`**). Then it builds the ACL with **`ios_config`**, then applies **`snmp-server community "…" RO <acl>`** via **`ios_command`** when the full running-config probe misses that substring.
+**`csr_snmp.yml`** prelude runs **`configure terminal`** → **`no snmp-server`** (**removes SNMP server config entirely on that CSR**) → **`no ip access-list extended|standard <name>`** → **`no ipv6 access-list <name>`** → **`end`** — all **best-effort** with **`ignore_errors`**. Clearing **`snmp-server`** first frees IOS from ACL bindings so **`snmp-server community … RO <acl>`** can attach to a rebuilt **extended** ACL. Then **`ios_config`** builds the ACL, then **`snmp-server community "…"`** applies when absent from running-config (**`ios_command`**).
 
-If apply still fails, read **`% Invalid`** lines in the **`ios_command`** task output and use **`show archive config differences`** on the CSR.
+If apply still fails after **`git pull`** (prelude **`no snmp-server`**), try renaming **`csr_snmp_acl_name`** in **`inventory/group_vars/csr_lab.yml`** so IOS cannot collide with leftover objects — then rerun **`csr_snmp.yml`**.
+
+If IOS still rejects the line, inspect **`show archive config differences`** / **`snmp mib`** or paste redacted **`% …`** banners from Ansible (not secrets).
 
 The playbook installs:
 

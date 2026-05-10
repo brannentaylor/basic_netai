@@ -4,8 +4,9 @@
 #
 # Export CSR_SNMP_RO_COMMUNITY (same value as SNMP_RO_COMMUNITY on Tigger).
 #
-# Lab drift: same ACL name can exist as STANDARD while SNMP needs EXTENDED — IOS then errors with
-# "incompatible type" / "could not be allocated". Prelude removes standard + extended for this name.
+# Lab drift: "could not be allocated / incompatible type" persists if SNMP still references the ACL name.
+# Prelude runs `no snmp-server` (drops all snmp-server config on the router), then strips standard|extended|ipv6
+# named lists for csr_snmp_acl_name. Lab-only — do not run against production SNMP you need to keep.
 #
 # failed_when uses lowercase substring checks (no bare "%" in expressions — breaks Ansible templating).
 - name: Cisco CSR - SNMP lab (ACL + RO community)
@@ -22,14 +23,19 @@
           Set CSR_SNMP_RO_COMMUNITY before running this playbook (lab-only RO string shared with Telegraf SNMP_RO_COMMUNITY on Tigger).
           Example: export CSR_SNMP_RO_COMMUNITY='your-lab-ro'
 
-    - name: Best-effort purge of conflicting named ACL STANDARD/EXTENDED
+    - name: Strip SNMP agent + telemetry ACL stubs (lab — removes all snmp-server config on device)
       cisco.ios.ios_command:
         commands:
           - configure terminal
+          - no snmp-server
           - no ip access-list extended {{ csr_snmp_acl_name }}
           - no ip access-list standard {{ csr_snmp_acl_name }}
+          - no ipv6 access-list {{ csr_snmp_acl_name }}
           - end
       ignore_errors: true
+
+    - name: Flush connection after snmp/acl prelude
+      ansible.builtin.meta: reset_connection
 
     - name: Telemetry extended ACL (SNMP source = Tigger only)
       cisco.ios.ios_config:
