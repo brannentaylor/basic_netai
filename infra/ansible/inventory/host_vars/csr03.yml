@@ -1,2 +1,17 @@
 csr_ospf_router_id: 3.3.3.3
-csr_gi1_ipv4: 192.168.254.3
+csr_ospf_interfaces:
+  - interface: GigabitEthernet2
+    ipv4: 10.0.23.3
+    netmask: 255.255.255.0
+    passive: false
+    description: basic_netai P2P csr03 Gi2 to csr02 Gi2
+  - interface: GigabitEthernet3
+    ipv4: 10.0.13.3
+    netmask: 255.255.255.0
+    passive: false
+    description: basic_netai P2P csr03 Gi3 to csr01 Gi3
+  - interface: GigabitEthernet4
+    ipv4: 10.0.0.22
+    netmask: 255.255.255.0
+    passive: true
+    description: basic_netai lab cloud 10.0.0.0/24 (matches ansible_host)

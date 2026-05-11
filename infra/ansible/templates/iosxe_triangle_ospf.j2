@@ -1,0 +1,18 @@
+{# OSPFv2 area 0 — triangle + Gi4 cloud (csr_ospf_interfaces). #}
+{# Each entry: interface, ipv4, netmask, description, passive (true = OSPF passive, e.g. cloud LAN). #}
+{% for intf in csr_ospf_interfaces %}
+interface {{ intf.interface }}
+ description {{ intf.description }}
+ no shutdown
+ ip address {{ intf.ipv4 }} {{ intf.netmask }}
+ ip ospf 1 area 0
+!
+{% endfor %}
+router ospf 1
+ router-id {{ csr_ospf_router_id }}
+ passive-interface default
+{% for intf in csr_ospf_interfaces %}
+{% if not (intf.passive | default(false) | bool) %}
+ no passive-interface {{ intf.interface }}
+{% endif %}
+{% endfor %}

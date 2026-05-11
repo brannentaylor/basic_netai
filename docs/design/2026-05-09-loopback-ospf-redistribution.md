@@ -2,7 +2,7 @@
 
 **Status:** Proposal — peer review (**implementation artefacts are in-repo; deploy only after sign-off**)  
 **Audience:** Humans + Ansible maintainer  
-**Lab:** Cisco CSR1000v, OSPFv2 single area 0 (Gi1 `192.168.254.0/29`)
+**Lab:** Cisco CSR1000v, OSPFv2 single area 0 (triangle **`10.0.12/13/23.0/24`** on Gi1/Gi2/Gi3 + **`10.0.0.0/24`** on **Gi4** passive — **`site_routing.yml`**)
 
 ## Summary
 
@@ -13,7 +13,7 @@ Automate deployment of **`Loopback0`** on each CSR using addresses aligned with 
 | Goal | How |
 | --- | --- |
 | Stable **`router-id` / LOOPBACK parity** | `Loopback0` IP = **`csr_ospf_router_id`** (`/32`). |
-| **Least privilege** redistribution | **`redistribute connected … route-map`** so only prefixes matching the **`prefix-list`** enter OSPF as external LSAs — **Gi1 transit** stays **internal** (`network … area 0` only). |
+| **Least privilege** redistribution | **`redistribute connected … route-map`** so only prefixes matching the **`prefix-list`** enter OSPF as external LSAs — **P2P transit** stays **internal** (**`ip ospf 1 area 0`** on triangle links only). |
 | Rich path metric externally | **`metric-type 1`** (**E1**): seed metric grows by **internal cost to ASBR**, better than **E2** for multi-exit comparisons when desired. |
 
 ## Risks / non-goals

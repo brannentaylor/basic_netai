@@ -10,13 +10,18 @@ ansible_become_method: enable
 lab_syslog_collector_ipv4: 10.0.0.21
 
 # Optional: `logging source-interface <iface>` — leave empty to let IOS choose.
-# If Gi1 is ONLY your transit (192.168.254.x after routing playbook), do NOT set it to Gi1
-# unless that interface also reaches 10.0.0.0/24; use the real management-facing interface instead.
+# Point at an interface that can reach lab_syslog_collector_ipv4 (10.0.0.0/24), not a P2P stub.
 csr_logging_source_interface: ""
 
-# Gi1 transit (multi-access /29) — must not overlap management 10.0.0.0/24 lab.
-csr_gi1_interface: GigabitEthernet1
-csr_gi1_netmask: 255.255.255.248
+# OSPF: triangle (Gi1/Gi2/Gi3) + Gi4 lab cloud 10.0.0.0/24 — see csr_ospf_interfaces in each host_vars/*.yml (site_routing.yml).
+# Gi4 IPv4 matches ansible_host in hosts.yml (syslog 10.0.0.21, TIGger 10.0.0.24 stay on same /24).
+
+# playbooks/csr_cdp.yml — enable CDP on these interfaces (extend if your CSR has more GigabitEthernet N).
+csr_cdp_interfaces:
+  - GigabitEthernet1
+  - GigabitEthernet2
+  - GigabitEthernet3
+  - GigabitEthernet4
 
 # Phase A2 — SNMP (see playbooks/csr_snmp.yml, docs/monitoring/tig/snmp-ios-xe.md)
 # Telemetry host that polls csr_lab ansible_host UDP/161 — match your infra/tig/README.md .

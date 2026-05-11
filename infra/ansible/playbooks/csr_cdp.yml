@@ -1,0 +1,16 @@
+---
+# Enable CDP globally and on each interface listed in group_vars csr_cdp_interfaces.
+- name: Cisco CSR - CDP global + per-interface
+  hosts: csr_lab
+  gather_facts: false
+  tasks:
+    - name: CDP run (global)
+      cisco.ios.ios_config:
+        lines: cdp run
+
+    - name: CDP enable on listed interfaces
+      cisco.ios.ios_config:
+        parents:
+          - interface {{ item }}
+        lines: cdp enable
+      loop: "{{ csr_cdp_interfaces }}"

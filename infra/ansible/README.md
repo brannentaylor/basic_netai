@@ -1,6 +1,6 @@
 # Ansible — CSR lab
 
-Applies **Gi1 + OSPF** and **syslog forwarding** from the Ubuntu control node.
+Applies **Gi2/Gi3 triangle OSPF** and **syslog forwarding** from the Ubuntu control node.
 
 ## Install Ansible + collections
 
@@ -39,7 +39,7 @@ Edit:
 
 - `inventory/hosts.yml` — management IPs.
 - `inventory/group_vars/csr_lab.yml` — connection + **`lab_syslog_collector_ipv4`** (VM on `10.0.0.0/24`). Set **`csr_logging_source_interface`** only when you know which interface reliably reaches that subnet.
-- `inventory/host_vars/` — per-router **router-id** and **Gi1 IPv4** within `192.168.254.0/29`.
+- `inventory/host_vars/` — per-router **`csr_ospf_router_id`** and **`csr_ospf_interfaces`** (triangle **`10.0.12/13/23.0/24`** + passive **Gi4** **`10.0.0.0/24`** = **`ansible_host`**).
 
 Vars live **under `inventory/`** alongside `hosts.yml` so Ansible merges them (`ansible_connection: ansible.netcommon.network_cli` applies to **`cisco.ios`** modules — plain `ssh` fails with “not valid for this module”).
 
@@ -84,6 +84,12 @@ Ubuntu may ship **sudo-rs**. A few sharp edges:
    uv run ansible-playbook playbooks/csr_logging.yml
    ```
 
+   Optional — **CDP** on all interfaces in **`csr_cdp_interfaces`** (default **Gi1–4**; edit **`group_vars/csr_lab.yml`** to add **Gi5**…):
+
+   ```bash
+   uv run ansible-playbook playbooks/csr_cdp.yml --diff
+   ```
+
 SNMP read-only toward **TIGger** (**Phase A2** — **`docs/monitoring/tig/snmp-ios-xe.md`**). The playbook binds **`snmp-server community … RO`** to a **numbered standard ACL** (default **87**, **`csr_snmp_standard_acl_num`** in **`group_vars/csr_lab.yml`**). TIGger source IP: **`tigger_snmp_collector_ipv4`**.
 
 ```bash
@@ -92,7 +98,7 @@ uv run ansible-playbook playbooks/csr_snmp.yml --diff
 uv run ansible-playbook playbooks/verify_csr_snmp.yml
 ```
 
-On **TIGger**, after apply: **`sudo apt-get install -y snmp`**, then for example **`snmpget -v2c -c "$SNMP_RO_COMMUNITY" 10.0.0.22 1.3.6.1.2.1.1.5.0`** (replace with each CSR **`ansible_host`** from **`hosts.yml`**). Do not type angle-bracket placeholders into **`bash`** — **`<foo>`** is input redirection.
+On **TIGger**, after apply: **`sudo apt-get install -y snmp`**, then for example **`snmpget -v2c -c "$SNMP_RO_COMMUNITY" 10.0.0.25 1.3.6.1.2.1.1.5.0`** (replace with each CSR **`ansible_host`** from **`hosts.yml`**). Do not type angle-bracket placeholders into **`bash`** — **`<foo>`** is input redirection.
 
 3. **Loopback0 + controlled OSPF redistribution** (human-gated — read the design first):
 

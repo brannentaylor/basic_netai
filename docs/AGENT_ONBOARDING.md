@@ -9,8 +9,8 @@ Safety and tool guardrails: **`docs/agent-ops/safety.md`** (read-only bias, trun
 ## 1. What this project is
 
 - **Purpose:** Small **lab** for **AI-assisted network operations** against **Cisco CSR1000v** routers.
-- **Runtime:** One **Ubuntu control host** on **`10.0.0.0/24`** and **three CSRs** (**`csr_lab`** in Ansible inventory). Default management IPv4 examples: **`10.0.0.20` / `10.0.0.23` / `10.0.0.22`** (see **[`infra/ansible/inventory/hosts.yml`](../infra/ansible/inventory/hosts.yml)** — **IPs can change**).
-- **Transit lab:** Gi1 multi-access **`192.168.254.0/29`** with **OSPF area 0** (playbook-driven).
+- **Runtime:** One **Ubuntu control host** on **`10.0.0.0/24`** and **three CSRs** (**`csr_lab`** in Ansible inventory). Default management IPv4 examples: **`10.0.0.20` / `10.0.0.25` / `10.0.0.22`** (see **[`infra/ansible/inventory/hosts.yml`](../infra/ansible/inventory/hosts.yml)** — **IPs can change**).
+- **Transit lab:** **OSPF area 0** triangle **`10.0.12.0/24`** (Gi1), **`10.0.23.0/24`** (Gi2), **`10.0.13.0/24`** (Gi3), plus **Gi4** on **`10.0.0.0/24`** (lab cloud + **`ansible_host`**, **OSPF passive**) — **`site_routing.yml`** + **`iosxe_triangle_ospf.j2`**.
 - **Centralized syslog:** CSR **`logging host`** → Ubuntu **`10.0.0.21:514/UDP`** (**`lab_syslog_collector_ipv4`** in group vars). Aggregated file **`/var/log/network-lab/all.log`** (**gitignored** payloads under **`artifacts/`**, not full OS logs when rsyslog fragment is current).
 
 This is **not production** equipment policy; treat passwords and configs as **lab-only**.
@@ -53,7 +53,7 @@ These items reflect the **intent of the project thread**; exact Git history is *
 
 | Area | Notes |
 | --- | --- |
-| **Routing baseline** | **`site_routing.yml`** + **`templates/iosxe_gi1_ospf.j2`**: Gi1 addressing, **OSPF 1**, **`router-id`** per **`host_vars`**, passive default except Gi1. |
+| **Routing baseline** | **`site_routing.yml`** + **`templates/iosxe_triangle_ospf.j2`**: **`csr_ospf_interfaces`** (triangle **`/24`** legs + passive **Gi4** cloud), **`ip ospf 1 area 0`**, **`router-id`**. |
 | **Syslog from CSRs** | **`csr_logging.yml`** + **`templates/iosxe_logging.j2`** toward **`lab_syslog_collector_ipv4`**. |
 | **Loopback + OSPF redistribution** | Design **`docs/design/2026-05-09-loopback-ospf-redistribution.md`**; playbook **`loopback_redistribute.yml`** (**prefix-list**, **route-map**, **`redistribute connected … metric-type 1`**); verify **`verify_loopback_ospf.yml`**. |
 | **EXEC aliases** | Design **`docs/design/2026-05-09-ios-exec-aliases.md`**; **`exec_aliases.yml`** + **`verify_exec_aliases.yml`**. |

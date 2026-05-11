@@ -1,4 +1,5 @@
-{# Gi1 multi-access transit + single-area OSPFv2 (area 0). #}
+{# LEGACY — Gi1 multi-access /29 + network statement (replaced by iosxe_triangle_ospf.j2). #}
+{# Rollback: point site_routing.yml at this template and restore csr_gi1_* host_vars + group_vars. #}
 interface {{ csr_gi1_interface }}
  description basic_netai Gi1 transit
  no shutdown

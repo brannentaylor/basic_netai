@@ -5,15 +5,15 @@ devices:
     role: csr1000v
     management_ipv4: 10.0.0.20
     ios_xe_version: fill-me
-    gi1_notes: Transit toward 192.168.254.0/29
+    ospf_transit: Gi1/Gi3 triangle 10.0.12/13 + Gi4 cloud 10.0.0.20/24
     owner: brannen
     last_audit: pending
   - asset_id: lab-csr-02
     hostname: csr02
     role: csr1000v
-    management_ipv4: 10.0.0.23
+    management_ipv4: 10.0.0.25
     ios_xe_version: fill-me
-    gi1_notes: Transit toward 192.168.254.0/29
+    ospf_transit: Gi1/Gi2 triangle 10.0.12/23 + Gi4 cloud 10.0.0.25/24
     owner: brannen
     last_audit: pending
   - asset_id: lab-csr-03
@@ -21,6 +21,6 @@ devices:
     role: csr1000v
     management_ipv4: 10.0.0.22
     ios_xe_version: fill-me
-    gi1_notes: Transit toward 192.168.254.0/29
+    ospf_transit: Gi2/Gi3 triangle 10.0.23/13 + Gi4 cloud 10.0.0.22/24
     owner: brannen
     last_audit: pending

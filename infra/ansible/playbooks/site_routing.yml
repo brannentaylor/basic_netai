@@ -1,10 +1,29 @@
 ---
-# Apply Gi1 transit + OSPF area 0 (see group_vars + host_vars).
-- name: Cisco CSR — Gi1 + OSPF
+# Triangle + Gi4 cloud — OSPF area 0 (inventory: csr_ospf_interfaces per host).
+- name: Cisco CSR — triangle transit + cloud + OSPF
   hosts: csr_lab
   gather_facts: false
+  # Multi-interface + OSPF + save can exceed default 30s on network_cli / CSR1000v.
+  vars:
+    ansible_command_timeout: 120
   tasks:
-    - name: Render IOS-XE Gi1 / OSPF stanza
+    - name: Assert OSPF interface inventory
+      ansible.builtin.assert:
+        that:
+          - csr_ospf_interfaces is defined
+          - csr_ospf_interfaces | length > 0
+        fail_msg: >-
+          Define csr_ospf_interfaces (list of interface, ipv4, netmask, description, passive) in inventory/host_vars/<host>.yml
+
+    - name: Best-effort remove legacy Gi1 /29 OSPF network (migration from iosxe_gi1_ospf_legacy_broadcast)
       cisco.ios.ios_config:
-        src: "{{ playbook_dir }}/../templates/iosxe_gi1_ospf.j2"
+        parents:
+          - router ospf 1
+        lines:
+          - no network 192.168.254.0 0.0.0.7 area 0
+      ignore_errors: true
+
+    - name: Render IOS-XE triangle + cloud / OSPF stanza
+      cisco.ios.ios_config:
+        src: "{{ playbook_dir }}/../templates/iosxe_triangle_ospf.j2"
         save_when: changed

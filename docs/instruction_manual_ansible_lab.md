@@ -23,7 +23,7 @@ For **changing CSR configuration**, **`infra/ansible/`** is the directory you op
 
 ## 2. Ansible in one paragraph (CLI analogy)
 
-Imagine you keep a **`notepad`** of every command you typed on **three** routers, grouped by scenario (“Gi1 addressing + OSPF”, “logging to VM”, …). Ansible’s **playbook** is that notepad executable: for each **`host:`** router, Ansible **opens SSH** (**via the Ansible network stack**, not vanilla `ansible_ssh` toward IOS), executes **modules**, and optionally **shows you the diff**.
+Imagine you keep a **`notepad`** of every command you typed on **three** routers, grouped by scenario (“Gi2/Gi3 triangle OSPF”, “logging to VM”, …). Ansible’s **playbook** is that notepad executable: for each **`host:`** router, Ansible **opens SSH** (**via the Ansible network stack**, not vanilla `ansible_ssh` toward IOS), executes **modules**, and optionally **shows you the diff**.
 
 | Manual habit | Rough Ansible analogue |
 | --- | --- |
@@ -84,7 +84,7 @@ Group variables **`ansible_user`** / **`ansible_password`** use **`lookup('env',
 | Level | Example path | Purpose |
 | --- | --- | --- |
 | Group | **`inventory/group_vars/csr_lab.yml`** | Anything shared (**syslog collector IP**, connection model). |
-| Host | **`inventory/host_vars/csr01.yml`** | Anything unique (**`csr_ospf_router_id`**, Gi1 LAN address). |
+| Host | **`inventory/host_vars/csr01.yml`** | Anything unique (**`csr_ospf_router_id`**, **`csr_ospf_interfaces`**). |
 
 Ansible merges them at runtime (**host overrides group**).
 
@@ -99,7 +99,7 @@ From **[`infra/ansible/`](file:///home/brannen/basic_netai/infra/ansible)**:
 | **[`ansible.cfg`](file:///home/brannen/basic_netai/infra/ansible/ansible.cfg)** | **`inventory`** default, Python interpreter, **`host_key_checking=False`** (**lab ergonomics**, not prod policy). |
 | **`inventory/`** | Hosts YAML + **`group_vars/`** / **`host_vars/`** (see §4). |
 | **`playbooks/`** | Runnable scenarios (**routing**, **logging**, **snapshots**, …). **`playbooks/vars/`** carries shared playbook variables (**for example the IOS capture roster for **`snapshot_configs.yml`**). |
-| **`templates/`** | Jinja2 templates rendered into IOS text (**Gi1/OSPF stanza**, **logging** snippets). |
+| **`templates/`** | Jinja2 templates rendered into IOS text (**triangle OSPF**, **logging** snippets). |
 | **`requirements.yml`** | Ansible **Galaxy collection** pinning. |
 | **`artifacts/`** | **Local workstation output**, especially **`artifacts/baselines/`** (**gitignored** payload plus tracked **`README.md`**). |
 
@@ -131,7 +131,7 @@ Patterns in this repo:
 
 | Playbook cluster | Behaviour |
 | --- | --- |
-| **[`site_routing.yml`](file:///home/brannen/basic_netai/infra/ansible/playbooks/site_routing.yml)** | **`ios_config src=` Gi1/OSPF template** (**idempotent-ish merge**). |
+| **[`site_routing.yml`](file:///home/brannen/basic_netai/infra/ansible/playbooks/site_routing.yml)** | **`ios_config src=`** triangle **OSPF** template (**idempotent-ish merge**). |
 | **[`csr_logging.yml`](file:///home/brannen/basic_netai/infra/ansible/playbooks/csr_logging.yml)** | **`ios_config`** syslog fragment. |
 | **[`loopback_redistribute.yml`](file:///home/brannen/basic_netai/infra/ansible/playbooks/loopback_redistribute.yml)** | Incremental IOS lines (**prefix-list, route-map, Lo0 redist**) aligned with **`docs/design/…`**. |
 | **[`exec_aliases.yml`](file:///home/brannen/basic_netai/infra/ansible/playbooks/exec_aliases.yml)** | Adds **`alias exec`** shortcuts. |
@@ -147,7 +147,7 @@ Two patterns coexist:
 
 | Pattern | Modules | Best when |
 | --- | --- | --- |
-| **Template render** | **`cisco.ios.ios_config`** **`src: ../templates/foo.j2`** | Broad stanza rewritten cohesively (**Gi1/OSPF**). Vars substitute **`csr_gi1_ipv4`**, **`csr_ospf_router_id`**, … |
+| **Template render** | **`cisco.ios.ios_config`** **`src: ../templates/foo.j2`** | Broad stanza rewritten cohesively (**triangle + cloud OSPF**). Vars substitute **`csr_ospf_interfaces`**, **`csr_ospf_router_id`**, … |
 | **Surgical **`lines`** + **`parents`** | **`cisco.ios.ios_config`** (**same**) | Adds child lines (**for example beneath **`router ospf 1`**) without re-rendering entire templates every time |
 
 Engineers migrating manual clips should prefer **narrow **`parents`** scope** (**minimizes blast radius**) **unless intentionally replacing template-driven blocks**.

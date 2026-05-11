@@ -46,10 +46,10 @@ Use a **literal management IP**. In **`bash`**, a line like `snmpget ... <mgmt_i
 
 ```bash
 SNMP_RO_COMMUNITY='your-lab-read-only-string'
-snmpget -v2c -c "$SNMP_RO_COMMUNITY" 10.0.0.22 1.3.6.1.2.1.1.5.0
+snmpget -v2c -c "$SNMP_RO_COMMUNITY" 10.0.0.25 1.3.6.1.2.1.1.5.0
 ```
 
-Use any **`csr_lab`** **`ansible_host`** from **`hosts.yml`** (example IPs in this repo: **`10.0.0.20`**, **`10.0.0.22`**, **`10.0.0.23`** — confirm yours).
+Use any **`csr_lab`** **`ansible_host`** from **`hosts.yml`** (example IPs in this repo: **`10.0.0.20`**, **`10.0.0.25`**, **`10.0.0.22`** — confirm yours).
 
 Expect **`STRING: "hostname"`** (MIB-II **sysName**, e.g. **`r2.homelab.com`**).
 
