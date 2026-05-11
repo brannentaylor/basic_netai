@@ -55,7 +55,7 @@ Do this once before **`Phase A0`** on **TIGger** so scripts are available under 
 | **A1** | InfluxDB 2 org + bucket; API token (**never committed**); Grafana install | **`install_influxdb2.sh`**, **`install_grafana.sh`**; token in **`.env`** only |
 | **A1-smoke** | **Telegraf** on **TIGger** writes **localhost** **cpu/mem** → **`lab-bucket`** — proves Grafana **Explore + Flux + Influx pipeline** before SNMP | **`install_telegraf_smoke.sh`** |
 | **A2** | CSR **`snmp-server … RO 87`** (default ACL number) + **standard numbered ACL**; TIGger **`snmpget`** proof then **Telegraf** `inputs.snmp` → Influx | **`csr_snmp.yml`**, **`verify_csr_snmp.yml`**, **`snmp-ios-xe.md`**; hosts in **[`hosts.yml`](../../../infra/ansible/inventory/hosts.yml)** — **lab path verified May 2026** |
-| **A3** | Grafana datasource + starter dashboards | — |
+| **A3** | Grafana **CSR SNMP** starter dashboard (Flux) | **[`infra/tig/grafana/README.md`](../../../infra/tig/grafana/README.md)** — import **`dashboards/csr-snmp-overview.json`** |
 | **A4 (optional)** | **inputs.ping**, syslog bridge | — |
 
 ## SNMP vs gNMI (lab reality)
@@ -114,7 +114,7 @@ Prerequisites: **`Phase A0`** complete so **`ufw`** allows **SSH** and **8086** 
 4. **`sudo bash infra/tig/install_grafana.sh`** — Grafana OSS; first visit to **`http://10.0.0.24:3000/`** (from **`10.0.0.0/24`**) or **`ssh -L 3000:127.0.0.1:3000 tigger`** then **`http://127.0.0.1:3000`** sets the Grafana admin password.
 5. **Verify:** **`systemctl status influxdb`**, **`systemctl status grafana-server`**, **`curl -fsS http://127.0.0.1:8086/health`**, **`ss -tlnp | grep -E ':8086|:3000'`**.
 
-**Phase A3** adds the Grafana **InfluxDB** datasource and dashboards; you can add the datasource early using the token from **`.env`** if you prefer.
+**Phase A3** (after **`csr_snmp`** appears in Influx **Data Explorer** or Grafana **Explore**): add the Grafana **InfluxDB** datasource if you have not already (**Flux**, URL **`http://127.0.0.1:8086`**, org + token from **`.env`**), then import **[`infra/tig/grafana/dashboards/csr-snmp-overview.json`](../../../infra/tig/grafana/dashboards/csr-snmp-overview.json)** — step-by-step **[`infra/tig/grafana/README.md`](../../../infra/tig/grafana/README.md)**.
 
 ### Phase A1-smoke — Telegraf localhost metrics
 
@@ -145,7 +145,7 @@ Prerequisites: **`infra/tig/.env`** on **TIGger** has **`INFLUX_ORG`**, **`INFLU
 
 ### 1 — Routers (from control node with Ansible)
 
-Uses **[`infra/ansible/playbooks/csr_snmp.yml`](../../../infra/ansible/playbooks/csr_snmp.yml)** (**`ios_config` `lines`/`parents`**, not a monolithic **`src`** file). **[`iosxe_snmp_lab.j2`](../../../infra/ansible/templates/iosxe_snmp_lab.j2)** is a **hand-paste mirror** only. Vars **`tigger_snmp_collector_ipv4`**, **`csr_snmp_acl_name`**: **`inventory/group_vars/csr_lab.yml`**.
+Uses **[`infra/ansible/playbooks/csr_snmp.yml`](../../../infra/ansible/playbooks/csr_snmp.yml)**. **[`iosxe_snmp_lab.j2`](../../../infra/ansible/templates/iosxe_snmp_lab.j2)** is a **hand-paste mirror** only. Vars **`tigger_snmp_collector_ipv4`**, **`csr_snmp_standard_acl_num`**, legacy purge name **`csr_snmp_acl_name`**: **`inventory/group_vars/csr_lab.yml`**.
 
 Dry-run optional:
 
@@ -190,6 +190,17 @@ from(bucket: "YOUR_BUCKET")
   |> limit(n: 15)
 ```
 
+Use **lowercase** duration suffixes in Flux (**`-15m`** minutes, not **`-15M`**).
+
+### 5 — Phase A3 — Grafana dashboard (import JSON)
+
+1. **Connections → Data sources** — ensure **InfluxDB** exists, **Query language: Flux**, URL **`http://127.0.0.1:8086`** (Grafana on TIGger), **Organization** and **Token** match **`influx setup`** / **`.env`**.
+2. **Dashboards → Import** — upload **`infra/tig/grafana/dashboards/csr-snmp-overview.json`** from the repo clone on TIGger (or any machine with the file).
+3. When prompted, map **InfluxDB (Flux)** to that datasource. Set dashboard variable **Bucket** if yours is not **`lab-bucket`**.
+4. Adjust time range (**Last 6 hours** default on the dashboard) if points are sparse (Telegraf CSR interval is often **60s**).
+
+Full detail: **[`infra/tig/grafana/README.md`](../../../infra/tig/grafana/README.md)**.
+
 **Reference:** **`snmp-ios-xe.md`**, **`../../design/2026-05-10-tigger-TIG-snmp-phased.md`**.
 
 ## Related docs
@@ -197,4 +208,5 @@ from(bucket: "YOUR_BUCKET")
 | Doc | Purpose |
 | --- | --- |
 | **`snmp-ios-xe.md`** | CSR `snmp-server`, **`snmpget`**, Telegraf fragment notes |
+| **`infra/tig/grafana/README.md`** | Phase A3 — import **`csr-snmp-overview.json`** |
 | **`gnmi-roadmap.md`** | Phase B gate (no gNMI until IOS upgrade) |

@@ -1,6 +1,6 @@
 # Design: TIG stack on host TIGger (SNMP Phase A; gNMI Phase B deferred)
 
-**Status:** Approved plan — **A0**/**A1**/**A1-smoke** in **`infra/tig/`**; **A2** router playbook **`csr_snmp.yml`** uses a **numbered standard ACL** (default **87**, **`csr_snmp_standard_acl_num`**) **permit host** the TIGger collector (**`tigger_snmp_collector_ipv4`**) plus matching **`snmp-server … RO`** — **lab-validated May 2026** on **`csr_lab`** with **`snmpget` sysName** from TIGger. **Telegraf CSR SNMP:** **`install_telegraf_snmp_csr.sh`**; **A3** Grafana starter dashboards still open. Ops hub: **`docs/monitoring/tig/`**.
+**Status:** Approved plan — **A0**/**A1**/**A1-smoke** in **`infra/tig/`**; **A2** **`csr_snmp.yml`** + **`install_telegraf_snmp_csr.sh`** **lab-validated May 2026**; **A3** starter Grafana dashboard **`infra/tig/grafana/dashboards/csr-snmp-overview.json`** (import + **Bucket** variable; see **`infra/tig/grafana/README.md`**). Ops hub: **`docs/monitoring/tig/`**.
 **Audience:** Operators + coding agents picking up after a fresh chat  
 
 **Mirrors Cursor plan:** SNMP-first for **CSR IOS-XE 16.05.01b**; **gNMI / MDT only after IOS upgrade**.
@@ -37,6 +37,7 @@
 | **`docs/monitoring/tig/snmp-ios-xe.md`** | **`snmp-server`** patterns for CSR 16.05 |
 | **`docs/monitoring/tig/gnmi-roadmap.md`** | Phase B gate (defer gNMI until IOS upgrade) |
 | **`infra/tig/`** | Install scripts + **`dotenv.example`** (**no secrets in git**) + SNMP fragment **`render_telegraf_snmp_fragment.py`** |
+| **`infra/tig/grafana/`** | Phase A3 — **`dashboards/csr-snmp-overview.json`** (Flux, **`csr_snmp`**) |
 | **`infra/ansible/playbooks/csr_snmp.yml`** | Prelude + **numbered standard ACL** + **`snmp-server`** RO (**`CSR_SNMP_RO_COMMUNITY`**); **`verify_csr_snmp.yml`** |
 
 ---
@@ -70,7 +71,7 @@ flowchart TB
 | **A0** | **`chrony`**, **`ufw`** — SSH allowed; Grafana **3000** / Influx **8086** restricted to lab or tunnel-only |
 | **A1** | **InfluxDB 2** org + bucket; API token (**never committed**); **Grafana** install |
 | **A2** | **CSR:** `snmp-server` + ACL permitting **only TIGger** toward **UDP 161**. **TIGger:** **`snmpwalk`** proof, then **Telegraf** `outputs.influxdb_v2` + `[[inputs.snmp]]` to CSR mgmt IPs from **[`infra/ansible/inventory/hosts.yml`](../../infra/ansible/inventory/hosts.yml)** |
-| **A3** | Grafana datasource + starter panels (**sysName**, uptime, IF-MIB where supported) |
+| **A3** | Grafana import **CSR SNMP** dashboard (**sysUpTime** + latest table; **IF-MIB** interfaces optional later) |
 | **A4 (optional)** | **inputs.ping**; syslog ingest bridge — separate |
 
 **Safety:** read-only SNMP only; **[`docs/agent-ops/safety.md`](../agent-ops/safety.md)**.
